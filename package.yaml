@@ -10,6 +10,9 @@ name: codecrafters-shell
 version: 0.1.0.0
 license: BSD3
 
+default-extensions:
+  - OverloadedStrings
+
 dependencies:
   - base >= 4.19 && < 5
   - process

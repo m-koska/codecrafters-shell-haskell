@@ -18,3 +18,7 @@ builtins = map T.pack ["exit", "echo", "type"]
 isBuiltIn :: T.Text -> Bool
 isBuiltIn name =
   name `elem` builtins
+
+getPath :: IO [T.Text]
+getPath =
+  fmap (T.splitOn ":" . T.pack) (getEnv "PATH")
