@@ -11,16 +11,32 @@ mainLoop is_running = do
 
   if not is_running
     
-    then 
-      mainLoop False
+    then pure ()
 
     else do 
 
       putStr "$ "
       hFlush stdout
 
-      command <- getLine
+      command_raw <- getLine
 
-      putStr (command ++ ": command not found\n")
+      continue <- executeCommand (parseCommand command_raw)
+      mainLoop continue
 
-      mainLoop True
+
+-- typ danych Command
+data Command = Exit | Unknown String 
+
+-- Parser do komend - sprawdza, czy mamy taką komendę, czy nie 
+parseCommand :: String -> Command
+parseCommand "exit" = Exit
+parseCommand x = Unknown x
+
+-- Wykonywanie komend wbudowanych + TODO: kom,komendy niewbudowane
+executeCommand :: Command -> IO Bool
+
+executeCommand Exit = return False
+
+executeCommand (Unknown unknown_command) = do 
+  putStrLn (unknown_command ++ ": command not found")
+  return True
