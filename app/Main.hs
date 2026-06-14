@@ -1,6 +1,8 @@
 module Main (main) where
 
 import System.IO (hFlush, stdout)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T.IO
 
 import Command
 import Parser
@@ -21,7 +23,7 @@ mainLoop is_running = do
       putStr "$ "
       hFlush stdout
 
-      input_raw <- getLine
+      input_raw <- T.IO.getLine
       let command_raw = parseInput input_raw
 
       continue <- executeCommand (parseCommand command_raw)

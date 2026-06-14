@@ -1,14 +1,20 @@
 module Command where
 
+import System.Environment (getEnv)
+import qualified Data.Text as T
+
 -- typ danych Command
 data Command = BuiltIn BuiltInCommand
-  | External String String
+  | External T.Text T.Text
   | Blank
 
 data BuiltInCommand = Exit
-  | Echo String
-  | Type [String]
+  | Echo T.Text
+  | Type [T.Text]
 
-isBuiltIn :: String -> Bool
+builtins :: [T.Text]
+builtins = map T.pack ["exit", "echo", "type"]
+
+isBuiltIn :: T.Text -> Bool
 isBuiltIn name =
-  name `elem` ["exit", "echo", "type"]
+  name `elem` builtins
