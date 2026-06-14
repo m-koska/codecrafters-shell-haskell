@@ -7,4 +7,9 @@ main = do
     -- TODO: Uncomment the code below to pass the first stage
     putStr "$ "
     hFlush stdout
+
+    command <- getLine
+
+    putStr (command ++ ": command found\n")
+
     pure ()
