@@ -18,25 +18,44 @@ mainLoop is_running = do
       putStr "$ "
       hFlush stdout
 
-      command_raw <- getLine
+      input_raw <- getLine
+      let command_raw = parseInput input_raw
 
       continue <- executeCommand (parseCommand command_raw)
       mainLoop continue
 
 
 -- typ danych Command
-data Command = Exit | Unknown String 
+data Command = Blank
+  | Unknown String 
+  | Echo 
+  | Exit
 
--- Parser do komend - sprawdza, czy mamy taką komendę, czy nie 
-parseCommand :: String -> Command
-parseCommand "exit" = Exit
-parseCommand x = Unknown x
+-- Zwraca stringa funkcji i stringa jej argumentów
+-- albo nic jak jest źle wpisane 
+parseInput :: String -> Maybe (String, String)
+parseInput input = case words input of
+  []       -> Nothing
+  (c:args) -> Just (c, unwords args)
 
--- Wykonywanie komend wbudowanych + TODO: kom,komendy niewbudowane
-executeCommand :: Command -> IO Bool
+parseCommand :: Maybe (String, String) -> (Command, String)
+parseCommand input_command = case input_command of
+  Nothing     -> (Blank, "")
+  Just ("exit", _)     -> (Exit, "")
+  Just ("echo", args)  -> (Echo, args)
+  Just (unknown_command, args) -> (Unknown unknown_command, args)
 
-executeCommand Exit = return False
+-- Wykonywanie komend wbudowanych + TODO: komendy niewbudowane
+executeCommand :: (Command, String) -> IO Bool
 
-executeCommand (Unknown unknown_command) = do 
+executeCommand (Blank, _) = return True
+
+executeCommand (Echo, args) = do 
+  putStrLn args
+  return True
+
+executeCommand (Exit, _) = return False
+
+executeCommand (Unknown unknown_command, args) = do 
   putStrLn (unknown_command ++ ": command not found")
   return True
