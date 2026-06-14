@@ -10,6 +10,6 @@ main = do
 
     command <- getLine
 
-    putStr (command ++ ": command found\n")
+    putStr (command ++ ": command not found\n")
 
     pure ()
