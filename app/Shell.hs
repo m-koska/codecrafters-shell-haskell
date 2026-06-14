@@ -20,7 +20,7 @@ executeCommand (BuiltIn (Type args)) = do
   lookup :: String -> IO ()
   lookup command
     | isBuiltIn command = putStrLn (command  ++ " is a shell builtin")
-    | otherwise = putStrLn (command ++ ": command not found")
+    | otherwise = putStrLn (command ++ ": not found")
     
 executeCommand (External command _) = do
   putStrLn (command ++ ": command not found")
