@@ -4,12 +4,23 @@ import System.IO (hFlush, stdout)
 
 main :: IO ()
 main = do
-    -- TODO: Uncomment the code below to pass the first stage
-    putStr "$ "
-    hFlush stdout
+  mainLoop True
 
-    command <- getLine
+mainLoop :: Bool -> IO ()
+mainLoop is_running = do 
 
-    putStr (command ++ ": command not found\n")
+  if not is_running
+    
+    then 
+      mainLoop False
 
-    pure ()
+    else do 
+
+      putStr "$ "
+      hFlush stdout
+
+      command <- getLine
+
+      putStr (command ++ ": command not found\n")
+
+      mainLoop True
