@@ -19,6 +19,7 @@ dependencies:
   - directory
   - filepath
   - text
+  - unix
 
 executables:
   codecrafters-shell-exe:

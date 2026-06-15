@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import Command
 import Parser 
 import qualified Data.Text.IO as T.IO
+import System.Posix.Process
 
 executeCommand :: Command -> IO Bool
 
@@ -30,6 +31,12 @@ executeCommand (BuiltIn (Type args)) = do
           Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
         
     
-executeCommand (External command _) = do
-  T.IO.putStrLn (T.concat[command, ": command not found"])
+executeCommand (External command args) = do
+  
+  maybeCommandPath <- getCommand $ T.unpack command
+
+  case maybeCommandPath of
+    Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
+    Just x  -> executeFile (T.unpack command) True (map T.unpack args) Nothing
+    -- dzięki temu, ze jest True, samo sobie wyszuka w PATH
   return True

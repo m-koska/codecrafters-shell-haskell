@@ -9,7 +9,7 @@ import Data.Maybe (listToMaybe)
 
 -- typ danych Command
 data Command = BuiltIn BuiltInCommand
-  | External T.Text T.Text
+  | External T.Text [T.Text]
   | Blank
 
 data BuiltInCommand = Exit
