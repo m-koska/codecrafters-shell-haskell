@@ -37,6 +37,8 @@ executeCommand (External command args) = do
 
   case maybeCommandPath of
     Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
-    Just x  -> executeFile x True (map T.unpack args) Nothing
-    -- dzięki temu, ze jest True, samo sobie wyszuka w PATH
+    Just x  -> do
+      _  <- forkProcess $ do
+        executeFile x True (map T.unpack args) Nothing
+      pure ()
   return True
