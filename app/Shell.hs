@@ -20,7 +20,11 @@ executeCommand (BuiltIn (Cd args)) = do
   exists <- doesDirectoryExist $ T.unpack args
 
   if exists
-    then changeWorkingDirectory $ T.unpack args 
+    then do
+      home_directory <- getHomeDirectory
+      let home_path = T.pack home_directory
+      let path = T.replace (T.pack "~") home_path args
+      changeWorkingDirectory $ T.unpack args
     else T.IO.putStrLn $ T.concat["cd: ", args, ": No such file or directory"]
 
   return True
