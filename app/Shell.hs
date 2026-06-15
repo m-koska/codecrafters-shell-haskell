@@ -7,6 +7,8 @@ import Parser
 import qualified Data.Text.IO as T.IO
 import System.Posix.Process
 import System.IO
+import System.Directory
+import System.OsPath
 
 executeCommand :: Command -> IO Bool
 
@@ -32,6 +34,11 @@ executeCommand (BuiltIn (Type args)) = do
           Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
         
     
+executeCommand (BuiltIn Pwd) = do
+  current_directory <- getCurrentDirectory
+  putStrLn current_directory
+  return True
+
 executeCommand (External command args) = do
   
   maybeCommandPath <- getCommand $ T.unpack command

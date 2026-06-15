@@ -18,4 +18,5 @@ parseCommand input_command = case input_command of
   Just ("exit", _)     -> BuiltIn Exit
   Just ("echo", args)  -> BuiltIn (Echo args)
   Just ("type", args)  -> BuiltIn (Type (T.words args))
+  Just ("pwd", _)  -> BuiltIn Pwd
   Just (unknown_command, args) -> External unknown_command $ T.splitOn " " args

@@ -1,19 +1,24 @@
 module Main (main) where
 
 import System.IO (hFlush, stdout)
+import System.Directory
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
 
 import Command
 import Parser
 import Shell
+import System.OsPath
+import System.Posix (homeDirectory)
 
 main :: IO ()
 main = do
-  mainLoop True
+  home_directory <- getHomeDirectory
+  mainLoop True home_directory
+  return ()
 
-mainLoop :: Bool -> IO ()
-mainLoop is_running = do 
+mainLoop :: Bool -> FilePath -> IO ()
+mainLoop is_running current_directory = do 
 
   if not is_running
     then pure ()
@@ -22,9 +27,9 @@ mainLoop is_running = do
 
       putStr "$ "
       hFlush stdout
-
+      
       input_raw <- T.IO.getLine
       let command_raw = parseInput input_raw
 
       continue <- executeCommand $ parseCommand command_raw
-      mainLoop continue
+      mainLoop continue current_directory
