@@ -26,5 +26,5 @@ mainLoop is_running = do
       input_raw <- T.IO.getLine
       let command_raw = parseInput input_raw
 
-      continue <- executeCommand (parseCommand command_raw)
+      continue <- executeCommand $ parseCommand command_raw
       mainLoop continue

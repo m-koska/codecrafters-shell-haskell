@@ -23,7 +23,12 @@ executeCommand (BuiltIn (Type args)) = do
   lookup :: T.Text -> IO ()
   lookup command
     | isBuiltIn command = T.IO.putStrLn (T.concat[command, " is a shell builtin"])
-    | otherwise = T.IO.putStrLn (T.concat[command, ": not found"])
+    | otherwise = do 
+        maybeCommandPath <- getCommand $ T.unpack command
+        case maybeCommandPath of
+          Nothing -> T.IO.putStrLn (T.concat[command, ": not found"]) 
+          Just x       -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
+        
     
 executeCommand (External command _) = do
   T.IO.putStrLn (T.concat[command, ": command not found"])
