@@ -16,9 +16,10 @@ data BuiltInCommand = Exit
   | Echo T.Text
   | Type [T.Text]
   | Pwd
+  | Cd T.Text
 
 builtins :: [T.Text]
-builtins = map T.pack ["exit", "echo", "type", "pwd"]
+builtins = map T.pack ["exit", "echo", "type", "pwd", "cd"]
 
 isBuiltIn :: T.Text -> Bool
 isBuiltIn name =

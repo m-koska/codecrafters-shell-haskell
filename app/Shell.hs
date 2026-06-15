@@ -9,10 +9,21 @@ import System.Posix.Process
 import System.IO
 import System.Directory
 import System.OsPath
+import System.Posix (changeWorkingDirectory)
 
 executeCommand :: Command -> IO Bool
 
 executeCommand Blank = return True
+
+executeCommand (BuiltIn (Cd args)) = do
+
+  exists <- doesDirectoryExist $ T.unpack args
+
+  if exists
+    then changeWorkingDirectory $ T.unpack args 
+    else T.IO.putStrLn $ T.concat["cd: ", args, ": No such file or directory"]
+
+  return True
 
 executeCommand (BuiltIn Exit) = return False
 
@@ -33,7 +44,7 @@ executeCommand (BuiltIn (Type args)) = do
           Nothing -> T.IO.putStrLn (T.concat[command, ": not found"]) 
           Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
         
-    
+
 executeCommand (BuiltIn Pwd) = do
   current_directory <- getCurrentDirectory
   putStrLn current_directory

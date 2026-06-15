@@ -15,6 +15,7 @@ parseInput input = case T.words input of
 parseCommand :: Maybe (T.Text, T.Text) -> Command
 parseCommand input_command = case input_command of
   Nothing     -> Blank
+  Just ("cd", args)     -> BuiltIn (Cd args) 
   Just ("exit", _)     -> BuiltIn Exit
   Just ("echo", args)  -> BuiltIn (Echo args)
   Just ("type", args)  -> BuiltIn (Type (T.words args))
