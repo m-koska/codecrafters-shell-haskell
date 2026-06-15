@@ -13,7 +13,7 @@ executeCommand Blank = return True
 executeCommand (BuiltIn Exit) = return False
 
 executeCommand (BuiltIn (Echo args))  = do
-  print args
+  T.IO.putStrLn args
   return True
 
 executeCommand (BuiltIn (Type args)) = do
@@ -27,7 +27,7 @@ executeCommand (BuiltIn (Type args)) = do
         maybeCommandPath <- getCommand $ T.unpack command
         case maybeCommandPath of
           Nothing -> T.IO.putStrLn (T.concat[command, ": not found"]) 
-          Just x       -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
+          Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
         
     
 executeCommand (External command _) = do
