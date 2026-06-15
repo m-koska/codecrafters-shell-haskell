@@ -6,6 +6,7 @@ import Command
 import Parser 
 import qualified Data.Text.IO as T.IO
 import System.Posix.Process
+import System.IO
 
 executeCommand :: Command -> IO Bool
 
@@ -38,7 +39,9 @@ executeCommand (External command args) = do
   case maybeCommandPath of
     Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
     Just x  -> do
-      _  <- forkProcess $ do
+      pid <- forkProcess $ do --process id
         executeFile x True (map T.unpack args) Nothing
+      -- wait until the process ends
+      _ <- getProcessStatus True False pid
       pure ()
   return True
