@@ -40,7 +40,7 @@ executeCommand (External command args) = do
     Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
     Just x  -> do
       pid <- forkProcess $ do --process id
-        executeFile x True (map T.unpack args) Nothing
+        executeFile (T.unpack command) True (map T.unpack args) Nothing
       -- wait until the process ends
       _ <- getProcessStatus True False pid
       pure ()
