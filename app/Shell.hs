@@ -37,6 +37,6 @@ executeCommand (External command args) = do
 
   case maybeCommandPath of
     Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
-    Just x  -> executeFile (T.unpack command) True (map T.unpack args) Nothing
+    Just x  -> executeFile x True (map T.unpack args) Nothing
     -- dzięki temu, ze jest True, samo sobie wyszuka w PATH
   return True
