@@ -9,6 +9,7 @@ data ArgsState = NormalText
   | SingleQuoteText
   | DoubleQuotedText
   | BackslashText
+  | BackslashQuotedText
   
 -- Zwraca stringa funkcji i stringa jej argumentów
 -- albo nic jak jest źle wpisane 
@@ -42,10 +43,12 @@ parseInput input =
 
     --  4. DoubleQuotedText
     go DoubleQuotedText acc ('"':xs) = go NormalText acc xs
+    go DoubleQuotedText acc ('\\':xs) = go BackslashQuotedText acc xs
     go DoubleQuotedText acc (x:xs) = go DoubleQuotedText (x:acc) xs
 
     -- 5. BackslashText
     go BackslashText acc (x:xs) = go NormalText (x:acc) xs
+    go BackslashQuotedText acc (x:xs) = go DoubleQuotedText (x:acc) xs
 
     -- default go (take 'x' and glue it in front of 'acc'):
     go NormalText acc (x:xs) = go NormalText (x:acc) xs 
