@@ -7,7 +7,8 @@ import qualified Data.Text as T
 
 data ArgsState = NormalText
   | SingleQuoteText
-
+  | DoubleQuotedText
+  
 -- Zwraca stringa funkcji i stringa jej argumentów
 -- albo nic jak jest źle wpisane 
 parseInput :: String -> [T.Text]
@@ -31,11 +32,16 @@ parseInput input =
 
     -- 2. special caracters - state change
     go NormalText acc ('\'':xs) = go SingleQuoteText acc xs
-    
+    go NormalText acc ('"':xs) = go DoubleQuotedText acc xs
+
     -- 3. SingleQuoteText
     go SingleQuoteText acc ('\'':xs) = go NormalText acc xs
     go SingleQuoteText acc (x:xs) = go SingleQuoteText (x:acc) xs
 
+    --  4. DoubleQuotedText
+    go DoubleQuotedText acc ('"':xs) = go NormalText acc xs
+    go DoubleQuotedText acc (x:xs) = go DoubleQuotedText (x:acc) xs
+    
     -- default go (take 'x' and glue it in front of 'acc'):
     go NormalText acc (x:xs) = go NormalText (x:acc) xs 
 
