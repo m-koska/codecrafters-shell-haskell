@@ -13,7 +13,7 @@ data Command = BuiltIn BuiltInCommand
   | Blank
 
 data BuiltInCommand = Exit
-  | Echo T.Text
+  | Echo [T.Text]
   | Type [T.Text]
   | Pwd
   | Cd T.Text

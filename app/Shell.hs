@@ -32,7 +32,7 @@ executeCommand (BuiltIn (Cd args)) = do
 executeCommand (BuiltIn Exit) = return False
 
 executeCommand (BuiltIn (Echo args))  = do
-  T.IO.putStrLn args
+  T.IO.putStrLn $ T.unwords args
   return True
 
 executeCommand (BuiltIn (Type args)) = do

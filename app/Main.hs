@@ -28,7 +28,7 @@ mainLoop is_running current_directory = do
       putStr "$ "
       hFlush stdout
       
-      input_raw <- T.IO.getLine
+      input_raw <- getLine
       let command_raw = parseInput input_raw
 
       continue <- executeCommand $ parseCommand command_raw
