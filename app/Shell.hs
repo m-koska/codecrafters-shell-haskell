@@ -18,7 +18,7 @@ processCommand :: AST -> IO Bool
 
 processCommand (ExecNode command) = executeCommand command
 
-processCommand (RedirectNode redirection_type deeper_ast file) = do
+processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
   
   T.hFlush stdout
   T.hFlush stderr
@@ -30,11 +30,16 @@ processCommand (RedirectNode redirection_type deeper_ast file) = do
     target_std_fd = case redirection_type of
       StandardRedirection -> stdOutput
       ErrorRedirection    -> stdError
+
+    posix_flags = case write_method of
+        TruncateMethod -> defaultFileFlags { trunc = True, creat = Just 0o644 }
+        AppendMethod   -> defaultFileFlags { append = True, creat = Just 0o644 }
   
     setup :: IO Fd
     setup = do
+
       backup_stdout <- dup target_std_fd
-      write_fd <- createFile file 0o644
+      write_fd <- openFd file WriteOnly posix_flags
 
       dupTo write_fd target_std_fd
       closeFd write_fd
