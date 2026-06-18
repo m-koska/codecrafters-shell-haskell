@@ -9,8 +9,42 @@ import System.Posix.Process
 import System.IO
 import System.Directory
 import System.OsPath
-import System.Posix (changeWorkingDirectory)
+import System.Posix
+import qualified GHC.IO.Handle as T
+import System.Posix (dupTo)
+import Control.Exception (bracket)
 
+processCommand :: AST -> IO Bool 
+
+processCommand (ExecNode command) = executeCommand command
+
+processCommand (RedirectNode deeper_ast file) = do
+  T.hFlush stdout
+  -- bracket: try something, do another thing afterwards in case it fails
+  -- bracket setup teardown try_something
+  
+  let 
+    setup :: IO Fd
+    setup = do
+      
+      backup_stdout <- dup stdOutput
+      write_fd <- createFile file 0o644
+
+      dupTo write_fd stdOutput
+      closeFd write_fd
+
+      return backup_stdout
+
+    teardown :: Fd -> IO ()
+    teardown backup_stdout = do
+      T.hFlush stdout
+      dupTo backup_stdout stdOutput
+      closeFd backup_stdout
+
+  bracket setup teardown (\_ -> processCommand deeper_ast)
+
+
+-- builtin commands handling
 executeCommand :: Command -> IO Bool
 
 executeCommand Blank = return True
@@ -43,10 +77,10 @@ executeCommand (BuiltIn (Type args)) = do
   lookup command
     | isBuiltIn command = T.IO.putStrLn (T.concat[command, " is a shell builtin"])
     | otherwise = do 
-        maybeCommandPath <- getCommand $ T.unpack command
-        case maybeCommandPath of
-          Nothing -> T.IO.putStrLn (T.concat[command, ": not found"]) 
-          Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
+      maybeCommandPath <- getCommand $ T.unpack command
+      case maybeCommandPath of
+        Nothing -> T.IO.putStrLn (T.concat[command, ": not found"]) 
+        Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
         
 
 executeCommand (BuiltIn Pwd) = do
@@ -55,7 +89,7 @@ executeCommand (BuiltIn Pwd) = do
   return True
 
 executeCommand (External command args) = do
-  
+
   maybeCommandPath <- getCommand $ T.unpack command
 
   case maybeCommandPath of
@@ -63,6 +97,7 @@ executeCommand (External command args) = do
     Just x  -> do
       pid <- forkProcess $ do --process id
         executeFile (T.unpack command) True (map T.unpack args) Nothing
+      
       -- wait until the process ends
       _ <- getProcessStatus True False pid
       pure ()

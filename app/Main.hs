@@ -7,29 +7,34 @@ import qualified Data.Text.IO as T.IO
 
 import Command
 import Parser
+import Tokeniser
 import Shell
 import System.OsPath
 import System.Posix (homeDirectory)
 
 main :: IO ()
 main = do
-  home_directory <- getHomeDirectory
-  mainLoop True home_directory
+  mainLoop True 
   return ()
 
-mainLoop :: Bool -> FilePath -> IO ()
-mainLoop is_running current_directory = do 
+mainLoop :: Bool -> IO ()
 
-  if not is_running
-    then pure ()
+mainLoop False = pure ()
 
-    else do 
-
-      putStr "$ "
-      hFlush stdout
+mainLoop True = do 
+  
+  putStr "$ "
+  hFlush stdout
+  
+  input_raw <- T.IO.getLine
+  let input_tokenised = tokeniseInput input_raw
       
-      input_raw <- getLine
-      let command_raw = parseInput input_raw
-
-      continue <- executeCommand $ parseCommand command_raw
-      mainLoop continue current_directory
+  case parseRedirection input_tokenised of
+    -- error handling
+    Left err -> do
+      T.IO.putStrLn $ T.concat ["syntax error: ", err]
+      mainLoop True
+      
+    Right ast -> do
+      continue <- processCommand ast
+      mainLoop continue
