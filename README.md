@@ -9,9 +9,10 @@ It uses POSIX instructions to perform basic shell operation.
 2. executing programs from `$PATH`
 3. double and single quotes
 4. backslash `\`
+5. simple **syntax tree** allowing to use POSIX compliant redirections `">"`
 
 ## TODO
-- actual *Abstract Syntax Tree*
-- pipes, redirections, etc.
+- develop *Abstract Syntax Tree*
+- pipes etc.
 - tab completions
 - signals like Ctrl+C
