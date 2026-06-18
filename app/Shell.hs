@@ -18,19 +18,25 @@ processCommand :: AST -> IO Bool
 
 processCommand (ExecNode command) = executeCommand command
 
-processCommand (RedirectNode deeper_ast file) = do
+processCommand (RedirectNode redirection_type deeper_ast file) = do
+  
   T.hFlush stdout
+  T.hFlush stderr
   -- bracket: try something, do another thing afterwards in case it fails
   -- bracket setup teardown try_something
+
+  let
+
+    target_std_fd = case redirection_type of
+      StandardRedirection -> stdOutput
+      ErrorRedirection    -> stdError
   
-  let 
     setup :: IO Fd
     setup = do
-      
-      backup_stdout <- dup stdOutput
+      backup_stdout <- dup target_std_fd
       write_fd <- createFile file 0o644
 
-      dupTo write_fd stdOutput
+      dupTo write_fd target_std_fd
       closeFd write_fd
 
       return backup_stdout
@@ -38,7 +44,7 @@ processCommand (RedirectNode deeper_ast file) = do
     teardown :: Fd -> IO ()
     teardown backup_stdout = do
       T.hFlush stdout
-      dupTo backup_stdout stdOutput
+      dupTo backup_stdout target_std_fd
       closeFd backup_stdout
 
   bracket setup teardown (\_ -> processCommand deeper_ast)

@@ -5,20 +5,29 @@ import qualified Data.Text as T
 
 data AST 
   = ExecNode Command
-  | RedirectNode AST FilePath 
+  | RedirectNode RedirectionType AST FilePath
+
+data RedirectionType
+  = StandardRedirection
+  | ErrorRedirection
 
 parseRedirection :: [T.Text] -> Either T.Text AST
 parseRedirection token_list = 
-  let (left_side, right_side) = break (\x -> x `elem` [">", "1>"]) token_list
+  let (left_side, right_side) = break (\x -> x `elem` [">", "1>", "2>"]) token_list
   
   in case right_side of
     
     [] -> parseCommand left_side
 
-    (operator : file : rest) -> 
-      case parseRedirection (left_side ++ rest) of 
+    (operator : file : rest) ->
+      
+      let redirection_type = case operator of
+            "2>" -> ErrorRedirection
+            _    -> StandardRedirection
+      
+      in case parseRedirection (left_side ++ rest) of 
         Left _err     -> Left _err
-        Right cmd_ast -> Right (RedirectNode cmd_ast (T.unpack file))
+        Right cmd_ast -> Right (RedirectNode redirection_type cmd_ast (T.unpack file))
     
     [_] -> Left "error"
 
