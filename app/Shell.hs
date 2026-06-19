@@ -109,9 +109,9 @@ executeCommand (External command args) = do
     
     Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
     
-    Just executable -> do
+    Just _ -> do
       -- proc constructort
-      let process = proc executable (map T.unpack args)
+      let process = proc (T.unpack command) (map T.unpack args)
 
       (_, _, _, processHandle) <- createProcess process
       _ <- waitForProcess processHandle
