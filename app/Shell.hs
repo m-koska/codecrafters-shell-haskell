@@ -13,6 +13,8 @@ import System.Posix
 import qualified GHC.IO.Handle as T
 import System.Posix (dupTo)
 import Control.Exception (bracket)
+import System.Environment (executablePath)
+import System.Process
 
 processCommand :: AST -> IO Bool 
 
@@ -104,12 +106,16 @@ executeCommand (External command args) = do
   maybeCommandPath <- getCommand $ T.unpack command
 
   case maybeCommandPath of
+    
     Nothing -> T.IO.putStrLn (T.concat[command, ": command not found"])
-    Just x  -> do
-      pid <- forkProcess $ do --process id
-        executeFile (T.unpack command) True (map T.unpack args) Nothing
-      
-      -- wait until the process ends
-      _ <- getProcessStatus True False pid
+    
+    Just executable -> do
+      -- proc constructort
+      let process = proc executable (map T.unpack args)
+
+      (_, _, _, processHandle) <- createProcess process
+      _ <- waitForProcess processHandle
+
       pure ()
+  
   return True
