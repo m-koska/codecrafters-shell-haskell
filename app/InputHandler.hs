@@ -33,7 +33,9 @@ handleTab input = do
       T.IO.putStr $ T.concat [to_put, " "] 
       mainLoop $ T.unpack only_one ++ " "
 
-    _          -> mainLoop input
+    _          -> do
+      putChar '\x07'
+      mainLoop input
 
 
 -- Enter Handling

@@ -29,5 +29,3 @@ main = do
   T.IO.putStr "$ "
   mainLoop ""
   return ()
-
-
