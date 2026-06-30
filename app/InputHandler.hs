@@ -36,7 +36,9 @@ handleTab input prev_key = do
   let matches = Data.List.sort $ Data.List.nub (matching_builtins ++ matching_ext)   
   
   case (matches, prev_key) of
-    
+    ([], _) -> do
+          putChar '\x07'
+          mainLoop input TabKey    
     ([only_one], _) -> do
       let current_length = length input
           to_put         = T.drop current_length only_one    
