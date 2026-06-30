@@ -38,7 +38,7 @@ handleTab input prev_key = do
   case (matches, prev_key) of
     ([], _) -> do
           putChar '\x07'
-          mainLoop input TabKey    
+          mainLoop input OtherKey    
     ([only_one], _) -> do
       let current_length = length input
           to_put         = T.drop current_length only_one    
@@ -51,7 +51,8 @@ handleTab input prev_key = do
 
     (_, TabKey) -> do
       putChar '\n'
-      T.IO.putStr $ T.unwords matches
+      T.IO.putStr $ T.intercalate "\t" matches
+      putChar '\n'
       T.IO.putStr $ T.concat ["$ ", input_text]
       mainLoop input TabKey
 
