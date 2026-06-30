@@ -1,6 +1,6 @@
 module Main (main) where
 
-import System.IO (hFlush, stdout)
+import System.IO (hFlush, stdout, stdin, hSetBuffering, BufferMode (NoBuffering), hSetEcho)
 import System.Directory
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
@@ -9,32 +9,25 @@ import Command
 import Parser
 import Tokeniser
 import Shell
+import InputHandler
 import System.OsPath
 import System.Posix (homeDirectory)
 
 main :: IO ()
+
+
 main = do
-  mainLoop True 
+
+-- initial setup for stdin and stdout
+-- echo - displaying what comes from stdin
+-- buffering - wheather the programm processes for example entire lines or every key separately
+
+  hSetBuffering stdin NoBuffering
+  hSetBuffering stdout NoBuffering
+  hSetEcho stdin False
+
+  T.IO.putStr "$ "
+  mainLoop ""
   return ()
 
-mainLoop :: Bool -> IO ()
 
-mainLoop False = pure ()
-
-mainLoop True = do 
-  
-  putStr "$ "
-  hFlush stdout
-  
-  input_raw <- T.IO.getLine
-  let input_tokenised = tokeniseInput input_raw
-      
-  case parseRedirection input_tokenised of
-    -- error handling
-    Left err -> do
-      T.IO.putStrLn $ T.concat ["syntax error: ", err]
-      mainLoop True
-      
-    Right ast -> do
-      continue <- processCommand ast
-      mainLoop continue

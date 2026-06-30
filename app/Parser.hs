@@ -15,8 +15,8 @@ data WriteMethod
   = TruncateMethod
   | AppendMethod
 
-parseRedirection :: [T.Text] -> Either T.Text AST
-parseRedirection token_list = 
+walkAST :: [T.Text] -> Either T.Text AST
+walkAST token_list = 
   let (left_side, right_side) = break (\x -> x `elem` [">", "1>", "2>", ">>", "1>>", "2>>"]) token_list
   
   in case right_side of
@@ -32,7 +32,7 @@ parseRedirection token_list =
             t | t `elem` [">>", "1>>", "2>>"] -> AppendMethod
             _ -> TruncateMethod
 
-      in case parseRedirection (left_side ++ rest) of 
+      in case walkAST (left_side ++ rest) of 
         Left _err     -> Left _err
         Right cmd_ast -> Right (RedirectNode redirection_type cmd_ast (T.unpack file) write_method)
     
