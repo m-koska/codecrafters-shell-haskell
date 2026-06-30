@@ -1,13 +1,14 @@
 module InputHandler where
 
 import qualified Data.Text as T
+import qualified Data.List
 
 import Command
 import Parser
 import Shell
 import Tokeniser
 import qualified Data.Text.IO as T.IO
-import Control.Monad as CM
+import Control.Monad
 
 
 mainLoop:: String -> IO () 
@@ -24,8 +25,13 @@ mainLoop buffer = do
 handleTab :: String -> IO()
 handleTab input = do
   let input_text = T.pack input
-
-  case filter (T.isPrefixOf input_text) builtins of
+      matching_builtins = filter (T.isPrefixOf input_text) builtins
+  
+  matching_ext <- getMatchingExecutables input_text
+  
+  let matches = Data.List.nub (matching_builtins ++ matching_ext)   
+  
+  case matches of
     
     [only_one] -> do
       let current_length = length input

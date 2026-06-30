@@ -4,8 +4,10 @@ import System.Environment
 import System.FilePath
 import System.Directory
 import qualified Data.Text as T
-import Control.Monad (filterM)
+import Control.Exception
 import Data.Maybe (listToMaybe)
+import Control.Monad
+
 
 -- typ danych Command
 data Command = BuiltIn BuiltInCommand
@@ -50,3 +52,27 @@ getCommand path = do
       if exist
         then executable <$> getPermissions file  
         else return False
+
+getMatchingExecutables :: T.Text -> IO [T.Text]
+getMatchingExecutables prefix = do
+
+  dirs <- getPath
+  -- lambda function as an argument \variable -> do ... 
+  results_list <- forM dirs $ \dir_text -> do
+      let dir_str = T.unpack dir_text
+      exists <- doesDirectoryExist dir_str
+
+      if exists
+        then do
+          attempt <- try (listDirectory dir_str) :: IO (Either SomeException [FilePath])
+          
+          case attempt of
+
+            Left _error -> return []
+            Right commands -> do
+              let commands_text = map T.pack commands
+              return $ filter (T.isPrefixOf prefix) commands_text
+        else
+          return []
+  
+  return $ concat results_list
