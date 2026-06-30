@@ -9,6 +9,7 @@ import Shell
 import Tokeniser
 import qualified Data.Text.IO as T.IO
 import Control.Monad
+import qualified Data.Text.IO as T
 
 
 data KeyType
@@ -45,16 +46,28 @@ handleTab input prev_key = do
       T.IO.putStr $ T.concat [to_put, " "] 
       mainLoop (T.unpack only_one ++ " ") OtherKey
 
-    (_, OtherKey) -> do
-      putChar '\x07'
-      mainLoop input TabKey
+    (_, _) -> do
+      let matches_str = map T.unpack matches
+          lcp = longestCommonPrefix matches_str
+      
+      if length lcp > length input
+        then do
+          let to_put = drop (length input) lcp
+          T.IO.putStr $ T.pack to_put
+          mainLoop lcp OtherKey
 
-    (_, TabKey) -> do
-      putChar '\n'
-      T.IO.putStr $ T.intercalate "\t" matches
-      putChar '\n'
-      T.IO.putStr $ T.concat ["$ ", input_text]
-      mainLoop input TabKey
+        else do
+          
+          case prev_key of
+            TabKey -> do
+              putChar '\n'
+              T.IO.putStr $ T.intercalate "  " matches
+              putChar '\n'
+              T.IO.putStr $ T.concat ["$ ", input_text]
+              mainLoop input TabKey
+            OtherKey -> do
+              putChar '\x07'
+              mainLoop input TabKey
 
 
 -- Enter Handling
@@ -97,3 +110,13 @@ handleRegularChar buffer ch = do
 
   putChar ch
   mainLoop (buffer ++ [ch]) OtherKey
+
+-- simple longest commpn prefix algorithm, for tab completions  
+commonPrefix :: String -> String -> String
+commonPrefix (x:xs) (y:ys) 
+  | x == y    = x : commonPrefix xs ys
+commonPrefix _ _ = ""
+
+
+longestCommonPrefix :: [String] -> String
+longestCommonPrefix = foldl1 commonPrefix
