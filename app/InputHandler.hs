@@ -11,37 +11,47 @@ import qualified Data.Text.IO as T.IO
 import Control.Monad
 
 
-mainLoop:: String -> IO () 
-mainLoop buffer = do
+data KeyType
+  = TabKey
+  | OtherKey 
+
+mainLoop:: String -> KeyType -> IO () 
+mainLoop buffer prev_key = do
   ch <- getChar
   case ch of
     '\n'    -> handleEnter buffer 
     '\DEL'  -> handleBackspace buffer
-    '\t'     -> handleTab buffer
+    '\t'     -> handleTab buffer prev_key
     regular -> handleRegularChar buffer regular
 
 -- Tab Handling
 
-handleTab :: String -> IO()
-handleTab input = do
+handleTab :: String -> KeyType -> IO()
+handleTab input prev_key = do
   let input_text = T.pack input
       matching_builtins = filter (T.isPrefixOf input_text) builtins
   
   matching_ext <- getMatchingExecutables input_text
   
-  let matches = Data.List.nub (matching_builtins ++ matching_ext)   
+  let matches = Data.List.sort $ Data.List.nub (matching_builtins ++ matching_ext)   
   
-  case matches of
+  case (matches, prev_key) of
     
-    [only_one] -> do
+    ([only_one], _) -> do
       let current_length = length input
           to_put         = T.drop current_length only_one    
       T.IO.putStr $ T.concat [to_put, " "] 
-      mainLoop $ T.unpack only_one ++ " "
+      mainLoop (T.unpack only_one ++ " ") OtherKey
 
-    _          -> do
+    (_, OtherKey) -> do
       putChar '\x07'
-      mainLoop input
+      mainLoop input TabKey
+
+    (_, TabKey) -> do
+      putChar '\n'
+      T.IO.putStrLn $ T.unwords matches
+      T.IO.putStr $ T.concat ["$ ", input_text]
+      mainLoop input TabKey
 
 
 -- Enter Handling
@@ -50,7 +60,7 @@ handleEnter "" = do
   putChar '\n'
   T.IO.putStr "$ "
 
-  mainLoop ""
+  mainLoop "" OtherKey
 
 handleEnter buffer = do
   putChar '\n'
@@ -62,25 +72,25 @@ handleEnter buffer = do
     Left err -> do
       T.IO.putStr $ T.concat ["syntax error: ", err]
       T.IO.putStr "$ "
-      mainLoop ""
+      mainLoop "" OtherKey
   
     Right ast -> do
       continue <- processCommand ast
       when continue $ do
         T.IO.putStr "$ "
-        mainLoop ""
+        mainLoop "" OtherKey
 
 -- Backspace Handling
 
 handleBackspace :: String -> IO ()
-handleBackspace "" = do mainLoop ""
+handleBackspace "" = do mainLoop "" OtherKey
 
 handleBackspace input = do
   T.IO.putStr "\b \b"
-  mainLoop (Prelude.init input)
+  mainLoop (Prelude.init input) OtherKey
 
 handleRegularChar :: String -> Char -> IO ()
 handleRegularChar buffer ch = do
 
   putChar ch
-  mainLoop (buffer ++ [ch])
+  mainLoop (buffer ++ [ch]) OtherKey

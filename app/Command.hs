@@ -61,11 +61,11 @@ getMatchingExecutables prefix = do
   results_list <- forM dirs $ \dir_text -> do
       let dir_str = T.unpack dir_text
       exists <- doesDirectoryExist dir_str
-
+    
       if exists
         then do
           attempt <- try (listDirectory dir_str) :: IO (Either SomeException [FilePath])
-          
+          -- without attempt, program doesnt work as soon as it comes across permission denial    
           case attempt of
 
             Left _error -> return []

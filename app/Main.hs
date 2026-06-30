@@ -27,5 +27,5 @@ main = do
   hSetEcho stdin False
 
   T.IO.putStr "$ "
-  mainLoop ""
+  mainLoop "" OtherKey
   return ()
