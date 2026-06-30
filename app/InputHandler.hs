@@ -49,7 +49,7 @@ handleTab input prev_key = do
 
     (_, TabKey) -> do
       putChar '\n'
-      T.IO.putStrLn $ T.unwords matches
+      T.IO.putStr $ T.unwords matches
       T.IO.putStr $ T.concat ["$ ", input_text]
       mainLoop input TabKey
 
