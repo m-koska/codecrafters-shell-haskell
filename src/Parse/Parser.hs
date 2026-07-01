@@ -1,19 +1,9 @@
-module Parser where
+module Parse.Parser where
 
-import Command
 import qualified Data.Text as T
 
-data AST 
-  = ExecNode Command
-  | RedirectNode RedirectionType AST FilePath WriteMethod
-
-data RedirectionType
-  = StandardRedirection
-  | ErrorRedirection
-
-data WriteMethod
-  = TruncateMethod
-  | AppendMethod
+import Exec.Command
+import Types
 
 walkAST :: [T.Text] -> Either T.Text AST
 walkAST token_list = 

@@ -1,20 +1,21 @@
-module Shell where
+module Exec.Shell where
 
-import qualified Data.Text as T
-
-import Command
-import Parser 
-import qualified Data.Text.IO as T.IO
-import System.Posix.Process
-import System.IO
+import Control.Exception (bracket)
 import System.Directory
+import System.Environment (executablePath)
+import System.IO
 import System.OsPath
 import System.Posix
-import qualified GHC.IO.Handle as T
-import System.Posix (dupTo)
-import Control.Exception (bracket)
-import System.Environment (executablePath)
+import System.Posix.Process
 import System.Process
+
+import qualified Data.Text as T
+import qualified Data.Text.IO as T.IO
+import qualified GHC.IO.Handle as IOHandle
+
+import Exec.Command
+import Parse.Parser
+import Types
 
 processCommand :: AST -> IO Bool 
 
@@ -22,8 +23,8 @@ processCommand (ExecNode command) = executeCommand command
 
 processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
   
-  T.hFlush stdout
-  T.hFlush stderr
+  IOHandle.hFlush stdout
+  IOHandle.hFlush stderr
   -- bracket: try something, do another thing afterwards in case it fails
   -- bracket setup teardown try_something
 
@@ -50,7 +51,7 @@ processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
 
     teardown :: Fd -> IO ()
     teardown backup_stdout = do
-      T.hFlush stdout
+      IOHandle.hFlush stdout
       dupTo backup_stdout target_std_fd
       closeFd backup_stdout
 
@@ -94,7 +95,6 @@ executeCommand (BuiltIn (Type args)) = do
       case maybeCommandPath of
         Nothing -> T.IO.putStrLn (T.concat[command, ": not found"]) 
         Just x  -> T.IO.putStrLn $ T.concat[command, " is ", T.pack x]
-        
 
 executeCommand (BuiltIn Pwd) = do
   current_directory <- getCurrentDirectory

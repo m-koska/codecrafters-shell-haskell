@@ -1,0 +1,15 @@
+{
+    "files.exclude": {
+        ".gitattributes": true,
+        ".gitignore": true,
+        ".vscode": true,
+        "**/.codecrafters": true,
+        "**/.stack-work": true,
+        "**/your_program.sh": true,
+        "codecrafters.yml": true,
+        "hie.yaml": true,
+        "package.yaml": true,
+        "stack.yaml": true,
+        "stack.yaml.lock": true
+    }
+}

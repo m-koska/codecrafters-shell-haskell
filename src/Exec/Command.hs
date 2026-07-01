@@ -1,24 +1,13 @@
-module Command where
+module Exec.Command where
 
+import Control.Exception
+import Control.Monad
+import Data.Maybe (listToMaybe)
+import System.Directory
 import System.Environment
 import System.FilePath
-import System.Directory
+
 import qualified Data.Text as T
-import Control.Exception
-import Data.Maybe (listToMaybe)
-import Control.Monad
-
-
--- typ danych Command
-data Command = BuiltIn BuiltInCommand
-  | External T.Text [T.Text]
-  | Blank
-
-data BuiltInCommand = Exit
-  | Echo [T.Text]
-  | Type [T.Text]
-  | Pwd
-  | Cd T.Text
 
 builtins :: [T.Text]
 builtins = map T.pack ["exit", "echo", "type", "pwd", "cd"]
@@ -65,7 +54,8 @@ getMatchingExecutables prefix = do
       if exists
         then do
           attempt <- try (listDirectory dir_str) :: IO (Either SomeException [FilePath])
-          -- without attempt, program doesnt work as soon as it comes across permission denial    
+          -- without attempt, program doesnt work as soon as it comes across permission denial
+          -- because its calling listDirectory   
           case attempt of
 
             Left _error -> return []

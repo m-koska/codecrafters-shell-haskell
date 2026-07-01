@@ -1,0 +1,89 @@
+module CLI.CompletionHandler where
+
+import qualified Data.Text as T
+import qualified Data.Text.IO as T.IO
+import Data.List
+
+import Types
+import Exec.Command
+import Parse.Parser
+import Exec.Shell
+import Parse.Tokeniser
+import Parse.IncompleteInput
+import Control.Exception
+import System.Directory
+
+handleCompletion :: String -> KeyType -> IO (String, KeyType)
+handleCompletion input_buffer prev_key = do
+  let (token_to_complete, final_state) = getLastWordContext input_buffer
+  
+  (text_to_print, new_buffer, new_key) <- 
+    if length input_buffer > length token_to_complete
+      then completeFilename input_buffer token_to_complete prev_key final_state 
+      else completeCommand input_buffer prev_key
+
+  putStr text_to_print
+  return (new_buffer, new_key)
+
+completeFilename :: String -> String -> KeyType -> TokenState -> IO (String, String, KeyType)
+completeFilename input token_to_complete prev_key final_state  = do
+  attempt <- try (listDirectory ".") :: IO (Either SomeException [FilePath])
+
+  case attempt of 
+    Left _ -> do
+      return ("\x07", input, TabKey) 
+
+    Right files -> do
+      let matches = sort $ filter (token_to_complete `isPrefixOf`) files
+      case matches of
+        [single_match] -> do
+          let 
+            to_put = drop (length token_to_complete) single_match
+            ending_char = case final_state of
+              SingleQuoteText  -> "' "
+              DoubleQuotedText -> "\" "
+              _                -> " "
+          return (to_put ++ ending_char, input ++ to_put ++ ending_char, OtherKey)
+        
+        _ -> do
+          return ("\x07", input, TabKey) 
+
+completeCommand :: String -> KeyType -> IO (String, String, KeyType)
+completeCommand input prev_key = do
+
+  let input_text = T.pack input
+      matching_builtins = filter (T.isPrefixOf input_text) builtins
+  
+  matching_ext <- getMatchingExecutables input_text
+  
+  let matches = Data.List.sort $ Data.List.nub (matching_builtins ++ matching_ext)   
+  
+  case (matches, prev_key) of
+    ([], _) -> do
+      return ("\x07", input, OtherKey)
+          
+    ([only_one], _) -> do
+
+      let to_put = T.unpack $ T.drop (length input) only_one 
+      return (to_put ++ " ", input ++ to_put ++ " ", OtherKey)
+
+    (_, _) -> do
+      let matches_str = map T.unpack matches
+          lcp = longestCommonPrefix matches_str
+      
+      if length lcp > length input
+        then do
+          let to_put = drop (length input) lcp
+          return (to_put, lcp, OtherKey)
+
+        else do
+          case prev_key of
+            TabKey -> do
+
+              let joined_matches = T.unpack $ T.intercalate "  " matches
+                  screen_output = "\n" ++ joined_matches ++ "\n$ " ++ input
+              
+              return (screen_output, input, TabKey)
+              
+            OtherKey -> do
+              return ("\x07", input, TabKey)
