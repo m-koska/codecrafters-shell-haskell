@@ -27,18 +27,23 @@ handleCompletion input_buffer prev_key = do
 
 completeFilename :: String -> String -> KeyType -> TokenState -> IO (String, String, KeyType)
 completeFilename input token_to_complete prev_key final_state  = do
-  attempt <- try (listDirectory ".") :: IO (Either SomeException [FilePath])
+  
+  let (dir, file) = splitFilePath token_to_complete
+      directory_path = if null dir then "." else dir
+      file_prefix = file
+
+  attempt <- try (listDirectory directory_path) :: IO (Either SomeException [FilePath])
 
   case attempt of 
     Left _ -> do
       return ("\x07", input, TabKey) 
 
     Right files -> do
-      let matches = sort $ filter (token_to_complete `isPrefixOf`) files
+      let matches = sort $ filter (file_prefix `isPrefixOf`) files
       case matches of
         [single_match] -> do
           let 
-            to_put = drop (length token_to_complete) single_match
+            to_put = drop (length file_prefix) single_match
             ending_char = case final_state of
               SingleQuoteText  -> "' "
               DoubleQuotedText -> "\" "

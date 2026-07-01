@@ -11,6 +11,12 @@ commonPrefix _ _ = ""
 longestCommonPrefix :: [String] -> String
 longestCommonPrefix = foldl1 commonPrefix
 
+splitFilePath :: String -> (String, String)
+splitFilePath token =
+  let rev_text     = reverse token
+      (name, path) = break (== '/') rev_text
+  in (reverse path, reverse name)
+
 getLastWordContext :: String -> (String, TokenState)
 getLastWordContext input = 
   let (reverse_words, state) = go NormalText "" input
