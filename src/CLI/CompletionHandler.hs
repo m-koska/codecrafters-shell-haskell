@@ -12,6 +12,8 @@ import Parse.Tokeniser
 import Parse.IncompleteInput
 import Control.Exception
 import System.Directory
+import Control.Monad (when)
+import System.Posix (isDirectory)
 
 handleCompletion :: String -> KeyType -> IO (String, KeyType)
 handleCompletion input_buffer prev_key = do
@@ -24,6 +26,12 @@ handleCompletion input_buffer prev_key = do
 
   putStr text_to_print
   return (new_buffer, new_key)
+
+data CompletionResult 
+  = CompletionFile
+  | CompletionDirectory
+  | CompletionCommand
+  | CompletionNone
 
 completeFilename :: String -> String -> KeyType -> TokenState -> IO (String, String, KeyType)
 completeFilename input token_to_complete prev_key final_state  = do
@@ -42,12 +50,17 @@ completeFilename input token_to_complete prev_key final_state  = do
       let matches = sort $ filter (file_prefix `isPrefixOf`) files
       case matches of
         [single_match] -> do
-          let 
-            to_put = drop (length file_prefix) single_match
-            ending_char = case final_state of
-              SingleQuoteText  -> "' "
-              DoubleQuotedText -> "\" "
-              _                -> " "
+          let full_path = if null dir then single_match else dir ++ single_match
+          is_dir <- doesDirectoryExist full_path
+
+          let to_put = drop (length file_prefix) single_match
+              ending_char = if is_dir
+                then "/"
+                else case final_state of
+                  SingleQuoteText  -> "' "
+                  DoubleQuotedText -> "\" "
+                  _                -> " "
+          
           return (to_put ++ ending_char, input ++ to_put ++ ending_char, OtherKey)
         
         _ -> do
