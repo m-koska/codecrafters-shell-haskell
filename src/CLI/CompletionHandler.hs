@@ -59,7 +59,7 @@ completeFilename input token_to_complete prev_key final_state  = do
       let matches = sort $ filter (file_prefix `isPrefixOf`) files
       case (matches, prev_key) of
         ([], _) -> do
-          return ("\x07", input, TabKey) 
+          return ("\x07", input, TabKey)
         
         ([single_match], _) -> do
           let full_path = if null dir then single_match else dir ++ single_match
@@ -74,14 +74,27 @@ completeFilename input token_to_complete prev_key final_state  = do
                   _                -> " "
           
           return (to_put ++ ending_char, input ++ to_put ++ ending_char, OtherKey)
-        
-        (_, TabKey) -> do
-          matches_with_slashes <-addSlashToDirectories matches
-          let joined_matches = intercalate "  " matches_with_slashes
-          return ("\n" ++ joined_matches ++ "\n$ " ++ input, input, TabKey)
-          
+
         (_, _) -> do
-          return ("\x07", input, TabKey) 
+          let lcp = longestCommonPrefix matches
+
+          if length lcp > length file_prefix
+            then do
+              let string_delta = drop (length file_prefix) lcp
+              return (string_delta, input ++ string_delta, OtherKey)
+
+            else do
+              case prev_key of
+                TabKey -> do
+                  matches_with_slashes <-addSlashToDirectories matches
+
+                  let joined_matches = intercalate "  " matches_with_slashes
+                      screen_output = "\n" ++ joined_matches ++ "\n$ " ++ input
+                  
+                  return (screen_output, input, TabKey)
+                  
+                OtherKey -> do
+                  return ("\x07", input, TabKey)
 
 completeCommand :: String -> KeyType -> IO (String, String, KeyType)
 completeCommand input prev_key = do
