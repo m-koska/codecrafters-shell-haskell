@@ -32,6 +32,7 @@ data BuiltInCommand
   | Type [T.Text] -- ^ Checks if a command name is a builtin or an executable in $PATH.
   | Pwd           -- ^ Prints the absolute path of the current working directory.
   | Cd T.Text     -- ^ Changes the working directory.
+  | Complete
 
 -- | Abstract Syntax Tree (AST) representing the structure of a command line sequence.
 -- Handles wrapping command executions with file redirections.

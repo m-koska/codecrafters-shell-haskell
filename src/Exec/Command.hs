@@ -19,7 +19,7 @@ import System.FilePath
 import qualified Data.Text as T
 
 builtins :: [T.Text]
-builtins = map T.pack ["exit", "echo", "type", "pwd", "cd"]
+builtins = map T.pack ["exit", "echo", "type", "pwd", "cd", "complete"]
 
 isBuiltIn :: T.Text -> Bool
 isBuiltIn name =
