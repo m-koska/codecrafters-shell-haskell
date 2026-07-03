@@ -1,3 +1,12 @@
+{-|
+Module      : CLI.CompletionHandler
+Description : Provides tab-completion functionality.
+Author      : Michał Kośka
+
+Responsible for resolving partial inputs into full command names, file paths, 
+or directories when the user triggers autocompletion.
+-}
+
 module CLI.CompletionHandler where
 
 import qualified Data.Text as T

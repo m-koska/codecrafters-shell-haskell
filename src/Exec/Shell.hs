@@ -1,3 +1,12 @@
+{-|
+Module      : Exec.Shell
+Description : Evaluates and executes the parsed AST.
+Author      : Michał Kośka
+
+Walks the Abstract Syntax Tree, managing POSIX file descriptors for redirections, 
+and dispatches execution to either built-in shell functions or external binaries.
+-}
+
 module Exec.Shell where
 
 import Control.Exception (bracket)

@@ -1,3 +1,12 @@
+{-|
+Module      : Parse.Tokeniser
+Description : Lexing and tokenization of raw string input.
+Author      : Michał Kośka
+
+Breaks down raw user input into distinct strings (tokens), carefully 
+managing different quoting states (single, double) and escape characters.
+-}
+
 module Parse.Tokeniser where
 
 import qualified Data.Text as T

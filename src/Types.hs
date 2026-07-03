@@ -1,3 +1,12 @@
+{-|
+Module      : Types
+Description : Core domain models and type definitions.
+Author      : Michał Kośka
+
+Contains the foundational data structures used across the shell, including 
+the Abstract Syntax Tree (AST), Command definitions, and TokenState.
+-}
+
 module Types where
 
 import qualified Data.Text as T

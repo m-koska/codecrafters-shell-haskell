@@ -1,3 +1,12 @@
+{-|
+Module      : Exec.Command
+Description : Resolution and execution of external commands.
+Author      : Michał Kośka
+
+Handles the resolution of executable paths by searching through the system's 
+$PATH environment variable and managing the execution of those external programs.
+-}
+
 module Exec.Command where
 
 import Control.Exception

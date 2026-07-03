@@ -1,3 +1,12 @@
+{-|
+Module      : Main
+Description : Entry point for the Haskell UNIX Shell.
+Author      : Michał Kośka
+
+This module configures the REPL environment and starts the main interactive loop 
+for the shell application.
+-}
+
 module Main (main) where
 
 import System.IO

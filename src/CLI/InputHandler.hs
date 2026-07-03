@@ -1,3 +1,12 @@
+{-|
+Module      : CLI.InputHandler
+Description : Manages interactive REPL keystrokes.
+Author      : Michał Kośka
+
+Handles raw character inputs from the terminal, managing special keystrokes 
+such as Enter, Backspace, and Tab for the interactive prompt.
+-}
+
 module CLI.InputHandler where
 
 import Control.Monad

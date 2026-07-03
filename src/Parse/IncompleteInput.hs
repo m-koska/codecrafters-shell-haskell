@@ -1,3 +1,12 @@
+{-|
+Module      : Parse.IncompleteInput
+Description : Handles incomplete inputs and multiline continuations.
+Author      : Michał Kośka
+
+Detects and manages situations where user input is incomplete, such as 
+unclosed quotes or trailing escape characters.
+-}
+
 module Parse.IncompleteInput where
 
 import Types
