@@ -1,6 +1,7 @@
 module Parse.IncompleteInput where
 
 import Types
+import System.Directory
 
 -- a simple longest commpn prefix algorithm, for tab completions  
 commonPrefix :: String -> String -> String
@@ -16,6 +17,11 @@ splitFilePath token =
   let rev_text     = reverse token
       (name, path) = break (== '/') rev_text
   in (reverse path, reverse name)
+
+addSlashToDirectories :: [FilePath] -> IO [FilePath]
+addSlashToDirectories = mapM $ \path -> do
+    isDir <- doesDirectoryExist path
+    return $ path ++ if isDir then "/" else ""
 
 getLastWordContext :: String -> (String, TokenState)
 getLastWordContext input = 
