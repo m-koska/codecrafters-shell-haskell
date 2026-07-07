@@ -23,7 +23,7 @@ tokeniseInput input =
 
   in map T.pack tokens_right_order
   
-  where 
+  where
     -- TokenState - qouting etc
     -- String     - current accumulated argument
     -- String     - remaining text

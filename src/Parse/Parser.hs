@@ -38,12 +38,36 @@ walkAST token_list =
     [_] -> Left "error"
 
 parseCommand :: [T.Text] -> Either T.Text AST
-parseCommand input_command = case input_command of
-  ["cd"]       -> Right $ ExecNode (BuiltIn (Cd "~"))
-  ("cd":(x:args)) -> Right $ ExecNode (BuiltIn (Cd x))
-  ("exit":_)      -> Right $ ExecNode (BuiltIn Exit)
-  ("echo":args)   -> Right $ ExecNode (BuiltIn (Echo args))
-  ("type":args)   -> Right $ ExecNode (BuiltIn (Type args))
-  ("pwd":_)       -> Right $ ExecNode (BuiltIn Pwd)
-  (unknown:args)  -> Right $ ExecNode (External unknown args)
-  _               -> Right $ ExecNode Blank
+parseCommand input_command = 
+  let  
+  in case input_command of
+    ["cd"]          -> Right $ ExecNode (BuiltIn (Cd "~"))
+    ("cd":(x:args)) -> Right $ ExecNode (BuiltIn (Cd x))
+    ("exit":_)      -> Right $ ExecNode (BuiltIn Exit)
+    ("echo":args)   -> Right $ ExecNode (BuiltIn (Echo args))
+    ("type":args)   -> Right $ ExecNode (BuiltIn (Type args))
+    ("pwd":_)       -> Right $ ExecNode (BuiltIn Pwd)
+    ("complete":a)  -> Right $ ExecNode (BuiltIn (Complete a))
+    (unknown:args)  -> Right $ ExecNode (External unknown args)
+    _               -> Right $ ExecNode Blank
+
+parseFlags :: [T.Text] -> ([T.Text], [T.Text])
+parseFlags input =
+  let (flags, args) = go [] input
+  in (reverse flags, args)
+  where
+    go :: [T.Text] -> [T.Text] -> ([T.Text], [T.Text])
+    go acc [] = (acc, [])
+
+    go acc ("--":rest) = (acc, rest)
+
+    go acc (x:xs)
+      | "--" `T.isPrefixOf` x =
+          go (T.drop 2 x : acc) xs
+
+      | "-" `T.isPrefixOf` x =
+          let shorts = map T.singleton (T.unpack (T.drop 1 x))
+          in go (reverse shorts ++ acc) xs
+
+      | otherwise =
+          (acc, x:xs)

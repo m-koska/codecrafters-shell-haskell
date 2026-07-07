@@ -110,6 +110,17 @@ executeCommand (BuiltIn Pwd) = do
   putStrLn current_directory
   return True
 
+executeCommand (BuiltIn (Complete args)) = do
+  let (flags, args_parsed) = parseFlags args
+
+  case flags of
+    ("p":_) -> mapM_ printComplete args_parsed 
+      where printComplete cmd = T.IO.putStrLn (T.concat["complete: ", cmd, ": no completion specification"])
+
+    _ -> pure()
+
+  return True
+
 executeCommand (External command args) = do
 
   maybeCommandPath <- getCommand $ T.unpack command
