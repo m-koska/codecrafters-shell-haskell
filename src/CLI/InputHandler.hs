@@ -21,29 +21,34 @@ import Parse.Parser
 import Parse.Tokeniser
 import Types
 
-mainLoop:: String -> KeyType -> IO () 
-mainLoop buffer prev_key = do
+data ShellState = ShellState 
+  { buffer   :: String
+  , prev_key :: KeyType 
+  }
+
+mainLoop:: ShellState -> IO () 
+mainLoop state = do
   ch <- getChar
   case ch of
-    '\n'    -> handleEnter buffer 
-    '\DEL'  -> handleBackspace buffer
-    '\t'     -> handleTab buffer prev_key
-    regular -> handleRegularChar buffer regular
+    '\n'    -> handleEnter state 
+    '\DEL'  -> handleBackspace state
+    '\t'     -> handleTab state
+    regular -> handleRegularChar state regular
 
 -- Tab Handling
-handleTab :: String -> KeyType -> IO()
-handleTab input prev_key = do
-  (new_buffer, new_key) <- handleCompletion input prev_key
-  mainLoop new_buffer new_key
+handleTab :: ShellState -> IO()
+handleTab state = do
+  (new_buffer, new_key) <- handleCompletion (buffer state) (prev_key state)
+  mainLoop state {buffer = new_buffer, prev_key = new_key}
 
 -- Enter Handling
-handleEnter:: String -> IO()
-handleEnter "" = do
+handleEnter:: ShellState -> IO()
+handleEnter ShellState {buffer = ""} = do
   putChar '\n'
   T.IO.putStr "$ "
-  mainLoop "" OtherKey
+  mainLoop ShellState {buffer = "", prev_key = OtherKey}
 
-handleEnter buffer = do
+handleEnter ShellState {buffer = buffer, prev_key = prev_key} = do
   putChar '\n'
   let input_tokenised = tokeniseInput (T.pack buffer)
   -- walking the AST tree
@@ -52,24 +57,31 @@ handleEnter buffer = do
     Left err -> do
       T.IO.putStr $ T.concat ["syntax error: ", err]
       T.IO.putStr "$ "
-      mainLoop "" OtherKey
+      mainLoop ShellState {buffer = "", prev_key = OtherKey}
   
     Right ast -> do
       continue <- processCommand ast
       when continue $ do
         T.IO.putStr "$ "
-        mainLoop "" OtherKey
+        mainLoop ShellState {buffer = "", prev_key = OtherKey}
 
 -- Backspace Handling
-handleBackspace :: String -> IO ()
-handleBackspace "" = do mainLoop "" OtherKey
+handleBackspace :: ShellState -> IO ()
+handleBackspace ShellState {buffer = ""} = do
+  putChar '\x07'
+  mainLoop ShellState {buffer = "", prev_key = OtherKey}
 
-handleBackspace input = do
-  T.IO.putStr "\b \b"
-  mainLoop (Prelude.init input) OtherKey
+handleBackspace state =
+  case buffer state of
+    ""  -> do
+      putChar '\x07'
+      mainLoop ShellState {buffer = "", prev_key = OtherKey}
+    buf -> do 
+      T.IO.putStr "\b \b"
+      mainLoop ShellState {buffer = Prelude.init buf, prev_key = OtherKey}
+  
 
-handleRegularChar :: String -> Char -> IO ()
-handleRegularChar buffer ch = do
-
+handleRegularChar :: ShellState -> Char -> IO ()
+handleRegularChar ShellState {buffer = buffer} ch = do
   putChar ch
-  mainLoop (buffer ++ [ch]) OtherKey
+  mainLoop ShellState {buffer = buffer ++ [ch], prev_key = OtherKey}

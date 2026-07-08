@@ -28,5 +28,5 @@ main = do
 
   -- run the REPL
   T.IO.putStr "$ "
-  mainLoop "" OtherKey
+  mainLoop ShellState {buffer = "", prev_key = OtherKey}
   return ()
