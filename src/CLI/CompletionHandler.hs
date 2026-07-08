@@ -80,7 +80,7 @@ completeFromScript input token_to_complete prev_key final_state script = do
   case (matches, prev_key) of
     ([], _) -> do
       return ("\x07", input, OtherKey)
-          
+
     ([single_match], _) -> do
       let to_put = drop (length token_to_complete) single_match 
       return (to_put ++ " ", input ++ to_put ++ " ", OtherKey)
@@ -91,7 +91,7 @@ completeFromScript input token_to_complete prev_key final_state script = do
       if length lcp > length token_to_complete
         then do
           let to_put = drop (length token_to_complete) lcp
-          return (to_put, lcp, OtherKey)
+          return (to_put, input ++ to_put, OtherKey)
 
         else do
           case prev_key of
