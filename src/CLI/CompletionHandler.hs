@@ -9,38 +9,101 @@ or directories when the user triggers autocompletion.
 
 module CLI.CompletionHandler where
 
-import qualified Data.Text as T
-import qualified Data.Text.IO as T.IO
-import Data.List
-
 import Types
+import Control.Monad
+import Control.Monad.Catch
+import Control.Monad.IO.Class
+import Control.Monad.RWS
 import Exec.Command
 import Parse.Parser
 import Exec.Shell
 import Parse.Tokeniser
 import Parse.IncompleteInput
-import Control.Exception
-import System.Directory
-import Control.Monad (when)
-import System.Posix (isDirectory)
 
-handleCompletion :: String -> KeyType -> IO (String, KeyType)
-handleCompletion input_buffer prev_key = do
-  let (token_to_complete, final_state) = getLastWordContext input_buffer
+import System.Directory
+import System.Posix
+import System.Process
+
+import qualified Data.Text as T
+import qualified Data.Text.IO as T.IO
+import Data.List
+import qualified Data.Map as Map
+import qualified Control.Exception
+
+handleCompletion :: Shell ()
+handleCompletion = do
+  state <- get
   
+  let input_buffer = buffer state
+      previous_key = prev_key state
+
+      (token_to_complete, final_state) = getLastWordContext input_buffer
+
+      cmd = getFirstWord input_buffer
+
   (text_to_print, new_buffer, new_key) <- 
     if length input_buffer > length token_to_complete
-      then completeFilename input_buffer token_to_complete prev_key final_state 
-      else completeCommand input_buffer prev_key
+      then case Map.lookup cmd (completions state) of
+          Just script -> liftIO $ 
+            completeFromScript 
+              input_buffer token_to_complete previous_key final_state script
 
-  putStr text_to_print
-  return (new_buffer, new_key)
+          Nothing     -> liftIO $
+            completeFilename 
+              input_buffer token_to_complete previous_key final_state 
+      
+      else liftIO $ 
+        completeCommand input_buffer previous_key
+
+  liftIO $ putStr text_to_print
+  modify $ \s ->
+    s 
+    {
+      buffer = new_buffer
+    , prev_key = new_key 
+    }
 
 data CompletionResult 
   = CompletionFile
   | CompletionDirectory
   | CompletionCommand
   | CompletionNone
+
+completeFromScript :: String -> String -> KeyType -> TokenState -> FilePath -> IO (String, String, KeyType)
+completeFromScript input token_to_complete prev_key final_state script = do
+
+  completion_out <- readProcess script [] ""
+  
+  let completions = lines completion_out
+      matches     = filter (isPrefixOf token_to_complete) completions
+
+  case (matches, prev_key) of
+    ([], _) -> do
+      return ("\x07", input, OtherKey)
+          
+    ([single_match], _) -> do
+      let to_put = drop (length token_to_complete) single_match 
+      return (to_put ++ " ", input ++ to_put ++ " ", OtherKey)
+
+    (_, _) -> do
+      let lcp = longestCommonPrefix matches
+      
+      if length lcp > length token_to_complete
+        then do
+          let to_put = drop (length token_to_complete) lcp
+          return (to_put, lcp, OtherKey)
+
+        else do
+          case prev_key of
+            TabKey -> do
+
+              let joined_matches = intercalate "  " matches
+                  screen_output = "\n" ++ joined_matches ++ "\n$ " ++ input
+              
+              return (screen_output, input, TabKey)
+              
+            OtherKey -> do
+              return ("\x07", input, TabKey)
 
 completeFilename :: String -> String -> KeyType -> TokenState -> IO (String, String, KeyType)
 completeFilename input token_to_complete prev_key final_state  = do
@@ -49,7 +112,7 @@ completeFilename input token_to_complete prev_key final_state  = do
       directory_path = if null dir then "." else dir
       file_prefix = file
 
-  attempt <- try (listDirectory directory_path) :: IO (Either SomeException [FilePath])
+  attempt <- Control.Exception.try (listDirectory directory_path) :: IO (Either Control.Exception.SomeException [FilePath])
 
   case attempt of 
     Left _ -> do
@@ -57,11 +120,11 @@ completeFilename input token_to_complete prev_key final_state  = do
 
     Right files -> do
       let matches = sort $ filter (file_prefix `isPrefixOf`) files
-      case (matches, prev_key) of
-        ([], _) -> do
+      case matches of
+        [] -> do
           return ("\x07", input, TabKey)
         
-        ([single_match], _) -> do
+        [single_match] -> do
           let full_path = if null dir then single_match else dir ++ single_match
           is_dir <- doesDirectoryExist full_path
 
@@ -75,7 +138,7 @@ completeFilename input token_to_complete prev_key final_state  = do
           
           return (to_put ++ ending_char, input ++ to_put ++ ending_char, OtherKey)
 
-        (_, _) -> do
+        _ -> do
           let lcp = longestCommonPrefix matches
 
           if length lcp > length file_prefix
@@ -104,7 +167,7 @@ completeCommand input prev_key = do
   
   matching_ext <- getMatchingExecutables input_text
   
-  let matches = Data.List.sort $ Data.List.nub (matching_builtins ++ matching_ext)   
+  let matches = Data.List.sort $ Data.List.nub (matching_builtins ++ matching_ext)
   
   case (matches, prev_key) of
     ([], _) -> do

@@ -38,17 +38,7 @@ mainLoop = do
 -- Tab Handling
 handleTab :: Shell ()
 handleTab = do
-  state <- get
-  
-  (new_buffer, new_key) <- liftIO $ 
-    handleCompletion (buffer state) (prev_key state)
-  
-  modify $ \s ->
-    s 
-    { buffer   = new_buffer
-    , prev_key = new_key
-    }
-
+  handleCompletion
   mainLoop
 
 -- Enter Handling
