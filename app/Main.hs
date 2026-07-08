@@ -12,21 +12,27 @@ module Main (main) where
 import System.IO
 
 import qualified Data.Text.IO as T.IO
+import qualified Data.Map as Map
 
 import CLI.InputHandler
 import Types
+import Control.Monad.State (evalStateT)
 
 main :: IO ()
 main = do
 
-  -- initial setup for stdin and stdout
-  -- echo - displaying what comes from stdin
-  -- buffering - wheather the programm processes for example entire lines or every key separately
   hSetBuffering stdin NoBuffering
   hSetBuffering stdout NoBuffering
   hSetEcho stdin False
 
   -- run the REPL
   T.IO.putStr "$ "
-  mainLoop ShellState {buffer = "", prev_key = OtherKey}
-  return ()
+
+  let initial_state =
+        ShellState
+        { buffer = ""
+        , prev_key = OtherKey
+        , completions = Map.empty
+        }
+
+  evalStateT mainLoop initial_state

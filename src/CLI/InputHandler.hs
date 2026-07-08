@@ -10,9 +10,12 @@ such as Enter, Backspace, and Tab for the interactive prompt.
 module CLI.InputHandler where
 
 import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.RWS
 import qualified Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
+import qualified Data.Map as Map
 
 import CLI.CompletionHandler
 import Exec.Command
@@ -21,67 +24,101 @@ import Parse.Parser
 import Parse.Tokeniser
 import Types
 
-data ShellState = ShellState 
-  { buffer   :: String
-  , prev_key :: KeyType 
-  }
-
-mainLoop:: ShellState -> IO () 
-mainLoop state = do
-  ch <- getChar
+mainLoop :: Shell () 
+mainLoop = do
+  ch <- liftIO getChar
+  
   case ch of
-    '\n'    -> handleEnter state 
-    '\DEL'  -> handleBackspace state
-    '\t'     -> handleTab state
-    regular -> handleRegularChar state regular
+    '\n'    -> handleEnter 
+    '\DEL'  -> handleBackspace
+    '\t'    -> handleTab
+    regular -> handleRegularChar regular
+
 
 -- Tab Handling
-handleTab :: ShellState -> IO()
-handleTab state = do
-  (new_buffer, new_key) <- handleCompletion (buffer state) (prev_key state)
-  mainLoop state {buffer = new_buffer, prev_key = new_key}
+handleTab :: Shell ()
+handleTab = do
+  state <- get
+  
+  (new_buffer, new_key) <- liftIO $ 
+    handleCompletion (buffer state) (prev_key state)
+  
+  modify $ \s ->
+    s 
+    { buffer   = new_buffer
+    , prev_key = new_key
+    }
+
+  mainLoop
 
 -- Enter Handling
-handleEnter:: ShellState -> IO()
-handleEnter ShellState {buffer = ""} = do
-  putChar '\n'
-  T.IO.putStr "$ "
-  mainLoop ShellState {buffer = "", prev_key = OtherKey}
+handleEnter:: Shell()
+handleEnter = do
+  state <- get
 
-handleEnter ShellState {buffer = buffer, prev_key = prev_key} = do
-  putChar '\n'
-  let input_tokenised = tokeniseInput (T.pack buffer)
-  -- walking the AST tree
-  case walkAST input_tokenised of
+  case buffer state of
+    "" -> do
+      liftIO $ putChar '\n'
+      liftIO $ T.IO.putStr "$ "
 
-    Left err -> do
-      T.IO.putStr $ T.concat ["syntax error: ", err]
-      T.IO.putStr "$ "
-      mainLoop ShellState {buffer = "", prev_key = OtherKey}
-  
-    Right ast -> do
-      continue <- processCommand ast
-      when continue $ do
-        T.IO.putStr "$ "
-        mainLoop ShellState {buffer = "", prev_key = OtherKey}
+    buffer -> do
+      liftIO $ putChar '\n'
+      let input_tokenised = tokeniseInput (T.pack buffer)
+      -- walking the AST tree
+      case walkAST input_tokenised of
+        Left err -> do
+          liftIO $ T.IO.putStr $ T.concat ["syntax error: ", err]
+          liftIO $ T.IO.putStr "$ "
+          modify $ \s ->
+            s { buffer = ""
+              , prev_key = OtherKey
+              }
+
+          mainLoop      
+        Right ast -> do
+          continue <- processCommand ast
+          when continue $ do
+            liftIO $ T.IO.putStr "$ "
+            modify $ \s ->
+              s { buffer = ""
+                , prev_key = OtherKey
+                }
+
+            mainLoop
 
 -- Backspace Handling
-handleBackspace :: ShellState -> IO ()
-handleBackspace ShellState {buffer = ""} = do
-  putChar '\x07'
-  mainLoop ShellState {buffer = "", prev_key = OtherKey}
+handleBackspace :: Shell ()
+handleBackspace = do
 
-handleBackspace state =
+  state <- get
+
   case buffer state of
     ""  -> do
-      putChar '\x07'
-      mainLoop ShellState {buffer = "", prev_key = OtherKey}
-    buf -> do 
-      T.IO.putStr "\b \b"
-      mainLoop ShellState {buffer = Prelude.init buf, prev_key = OtherKey}
+      liftIO $ putChar '\x07'
+
+      modify $ \s ->
+        s {prev_key = OtherKey}
+
+    buf -> do
+      liftIO $ T.IO.putStr "\b \b"
+
+      modify $ \s ->
+        s 
+        { buffer   = Prelude.init buf
+        , prev_key = OtherKey
+        }
+
+  mainLoop
   
 
-handleRegularChar :: ShellState -> Char -> IO ()
-handleRegularChar ShellState {buffer = buffer} ch = do
-  putChar ch
-  mainLoop ShellState {buffer = buffer ++ [ch], prev_key = OtherKey}
+handleRegularChar :: Char -> Shell ()
+handleRegularChar ch = do
+  liftIO $ putChar ch
+  
+  modify $ \state ->
+    state 
+    { buffer   = buffer state ++ [ch]
+    , prev_key = OtherKey 
+    }
+
+  mainLoop

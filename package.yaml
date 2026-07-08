@@ -12,7 +12,9 @@ dependencies:
   - filepath
   - text
   - unix
-
+  - containers
+  - exceptions
+  - mtl
 executables:
   codecrafters-shell-exe:
     main: Main.hs

@@ -9,6 +9,8 @@ the Abstract Syntax Tree (AST), Command definitions, and TokenState.
 
 module Types where
 
+import Control.Monad.State
+import qualified Data.Map as Map
 import qualified Data.Text as T
 
 data TokenState
@@ -54,3 +56,11 @@ data WriteMethod
 data KeyType
   = TabKey   -- ^ Indicates the immediate previous action was a <TAB> key press.
   | OtherKey -- ^ Represents any other standard character, backspace, or newline input.
+
+data ShellState = ShellState 
+  { buffer   :: String
+  , prev_key :: KeyType
+  , completions :: Map.Map T.Text FilePath
+  }
+
+type Shell a = StateT ShellState IO a
