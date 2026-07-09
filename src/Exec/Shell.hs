@@ -141,6 +141,17 @@ executeCommand (BuiltIn (Complete args)) = do
             }
         else do liftIO $ T.IO.putStrLn "complate: invalid args"
 
+    ("r":_) ->
+      if length args_parsed == 1
+        then do
+          let cmd = head args_parsed
+          modify $ \s ->
+            s
+            {
+              completions = Map.delete cmd (completions s)
+            }
+        else do liftIO $ T.IO.putStrLn "complate: invalid args"
+
     _ -> pure()
 
   return True
