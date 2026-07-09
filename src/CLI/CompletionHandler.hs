@@ -14,22 +14,24 @@ import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.RWS
+import Data.List
 import Exec.Command
 import Parse.Parser
 import Exec.Shell
 import Parse.Tokeniser
 import Parse.IncompleteInput
 
+import System.Environment
 import System.Directory
 import System.Posix
 import System.Process
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
-import Data.List
 import qualified Data.Map as Map
 import qualified Data.Maybe as Mb
 import qualified Control.Exception
+import qualified System.Environment as System
 
 handleCompletion :: [T.Text] -> TokenState -> Shell ()
 handleCompletion input_tokenised final_state = do
@@ -98,6 +100,9 @@ completeFromScript input prev_key final_state script script_context = do
   let cmd               = cmd_context script_context
       token_to_complete = token_to_complete_context script_context 
       prev_arg          = prev_arg_context script_context
+
+  System.setEnv "COMP_LINE" input
+  System.setEnv "COMP_POINT" $ show (length input) 
 
   completion_out_str <- readProcess script [T.unpack cmd, T.unpack token_to_complete, T.unpack prev_arg] ""
   let completion_out = T.pack completion_out_str 
