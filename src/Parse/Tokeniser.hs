@@ -13,26 +13,27 @@ import qualified Data.Text as T
 
 import Types
 
-tokeniseInput :: T.Text -> [T.Text]
+tokeniseInput :: T.Text -> ([T.Text], TokenState)
 tokeniseInput input = 
   let 
     input_string = T.unpack input
-    tokens_raw = go NormalText "" input_string
+    (tokens_raw, state) = go NormalText "" input_string
     tokens_filtered = filter (not . null) tokens_raw
     tokens_right_order = map reverse tokens_filtered 
 
-  in map T.pack tokens_right_order
+  in (map T.pack tokens_right_order, state)
   
   where
     -- TokenState - qouting etc
     -- String     - current accumulated argument
     -- String     - remaining text
-    go :: TokenState -> String -> String -> [String]
+    go :: TokenState -> String -> String -> ([String], TokenState)
     -- 1. the current character is a "" (nothing) or a space
-    go _ acc [] = [acc]
+    go state acc [] = ([acc], state)
     -- add finished word to the end of the list
-    go NormalText acc (' ':xs) = acc : go NormalText "" xs
-
+    go NormalText acc (' ':xs) =
+      let (new_acc, state) = go NormalText "" xs
+      in (acc : new_acc, state)
     -- 2. special caracters - state change
     go NormalText acc ('\'':xs) = go SingleQuoteText acc xs
     go NormalText acc ('"':xs)  = go DoubleQuotedText acc xs

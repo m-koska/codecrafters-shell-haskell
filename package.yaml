@@ -15,6 +15,7 @@ dependencies:
   - containers
   - exceptions
   - mtl
+  - safe
 executables:
   codecrafters-shell-exe:
     main: Main.hs

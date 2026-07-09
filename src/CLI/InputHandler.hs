@@ -31,14 +31,17 @@ mainLoop = do
   case ch of
     '\n'    -> handleEnter 
     '\DEL'  -> handleBackspace
-    '\t'    -> handleTab
+    '\t'    -> do
+      state <- get 
+      let (input_tokenised, token_state) = tokeniseInput (T.pack $ buffer state)
+      handleTab input_tokenised token_state 
     regular -> handleRegularChar regular
 
 
 -- Tab Handling
-handleTab :: Shell ()
-handleTab = do
-  handleCompletion
+handleTab :: [T.Text] -> TokenState -> Shell ()
+handleTab input_tokenised token_state = do
+  handleCompletion input_tokenised token_state
   mainLoop
 
 -- Enter Handling
@@ -51,9 +54,9 @@ handleEnter = do
       liftIO $ putChar '\n'
       liftIO $ T.IO.putStr "$ "
 
-    buffer -> do
+    buffer -> do 
       liftIO $ putChar '\n'
-      let input_tokenised = tokeniseInput (T.pack buffer)
+      let (input_tokenised, state) = tokeniseInput (T.pack buffer)
       -- walking the AST tree
       case walkAST input_tokenised of
         Left err -> do

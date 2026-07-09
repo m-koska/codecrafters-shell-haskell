@@ -28,29 +28,47 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
 import Data.List
 import qualified Data.Map as Map
+import qualified Data.Maybe as Mb
 import qualified Control.Exception
 
-handleCompletion :: Shell ()
-handleCompletion = do
+handleCompletion :: [T.Text] -> TokenState -> Shell ()
+handleCompletion input_tokenised final_state = do
   state <- get
-  
-  let input_buffer = buffer state
-      previous_key = prev_key state
 
-      (token_to_complete, final_state) = getLastWordContext input_buffer
+  let input_buffer        = buffer state
+      previous_key        = prev_key state
+      cmd                 = Mb.fromMaybe "" (Mb.listToMaybe input_tokenised)
+      
+      ends_with_space     = not (null input_buffer) && last input_buffer == ' '
+      rev_tokens    = reverse input_tokenised
 
-      cmd = getFirstWord input_buffer
+      (token_to_complete, second_last_token)
+              | ends_with_space = case rev_tokens of
+                  []      -> ("", "")
+                  (x:_)   -> ("", x)
+              | otherwise = case rev_tokens of
+                  []      -> ("", "")
+                  [x]     -> (x, "")
+                  (x:y:_) -> (x, y)
 
   (text_to_print, new_buffer, new_key) <- 
-    if length input_buffer > length token_to_complete
+    if length input_buffer > T.length token_to_complete
       then case Map.lookup cmd (completions state) of
           Just script -> liftIO $ 
             completeFromScript 
-              input_buffer token_to_complete previous_key final_state script
+              input_buffer
+              previous_key
+              final_state
+              script
+              ScriptContext
+              { cmd_context = cmd 
+              ,  token_to_complete_context = token_to_complete
+              ,  prev_arg_context = second_last_token
+              }
 
           Nothing     -> liftIO $
             completeFilename 
-              input_buffer token_to_complete previous_key final_state 
+              input_buffer (T.unpack token_to_complete) previous_key final_state 
       
       else liftIO $ 
         completeCommand input_buffer previous_key
@@ -69,35 +87,46 @@ data CompletionResult
   | CompletionCommand
   | CompletionNone
 
-completeFromScript :: String -> String -> KeyType -> TokenState -> FilePath -> IO (String, String, KeyType)
-completeFromScript input token_to_complete prev_key final_state script = do
+data ScriptContext = ScriptContext
+  { cmd_context               :: T.Text
+  , token_to_complete_context :: T.Text
+  , prev_arg_context          :: T.Text
+  }
 
-  completion_out <- readProcess script [] ""
-  
-  let completions = lines completion_out
-      matches     = filter (isPrefixOf token_to_complete) completions
+completeFromScript :: String -> KeyType -> TokenState -> FilePath -> ScriptContext -> IO (String, String, KeyType)
+completeFromScript input prev_key final_state script script_context = do
+  let cmd               = cmd_context script_context
+      token_to_complete = token_to_complete_context script_context 
+      prev_arg          = prev_arg_context script_context
+
+  completion_out_str <- readProcess script [T.unpack cmd, T.unpack token_to_complete, T.unpack prev_arg] ""
+  let completion_out = T.pack completion_out_str 
+
+  let completions = T.lines completion_out
+      matches     = filter (T.isPrefixOf token_to_complete) completions
 
   case (matches, prev_key) of
     ([], _) -> do
       return ("\x07", input, OtherKey)
 
     ([single_match], _) -> do
-      let to_put = drop (length token_to_complete) single_match 
-      return (to_put ++ " ", input ++ to_put ++ " ", OtherKey)
+      
+      let to_put = T.drop (T.length token_to_complete) single_match
+      return (T.unpack to_put ++ " ", input ++ T.unpack to_put ++ " ", OtherKey)
 
     (_, _) -> do
-      let lcp = longestCommonPrefix matches
+      let lcp = longestCommonPrefix (map T.unpack matches)
       
-      if length lcp > length token_to_complete
+      if length lcp > T.length token_to_complete
         then do
-          let to_put = drop (length token_to_complete) lcp
-          return (to_put, input ++ to_put, OtherKey)
+          let to_put = T.drop (T.length token_to_complete) (T.pack lcp)
+          return (T.unpack to_put, input ++ T.unpack to_put, OtherKey)
 
         else do
           case prev_key of
             TabKey -> do
 
-              let joined_matches = intercalate "  " matches
+              let joined_matches = intercalate "  " (map T.unpack matches)
                   screen_output = "\n" ++ joined_matches ++ "\n$ " ++ input
               
               return (screen_output, input, TabKey)
