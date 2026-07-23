@@ -53,6 +53,7 @@ handleEnter = do
     "" -> do
       liftIO $ putChar '\n'
       liftIO $ T.IO.putStr "$ "
+      mainLoop
 
     buffer -> do 
       liftIO $ putChar '\n'

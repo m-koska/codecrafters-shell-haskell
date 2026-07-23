@@ -48,6 +48,7 @@ parseCommand input_command =
     ("type":args)   -> Right $ ExecNode (BuiltIn (Type args))
     ("pwd":_)       -> Right $ ExecNode (BuiltIn Pwd)
     ("complete":a)  -> Right $ ExecNode (BuiltIn (Complete a))
+    ("jobs":a)      -> Right $ ExecNode (BuiltIn (Jobs))
     (unknown:args)  -> Right $ ExecNode (External unknown args)
     _               -> Right $ ExecNode Blank
 

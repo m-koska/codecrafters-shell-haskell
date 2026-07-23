@@ -156,6 +156,10 @@ executeCommand (BuiltIn (Complete args)) = do
 
   return True
 
+executeCommand (BuiltIn Jobs) = do
+  liftIO $ putChar '\n'
+  return True
+
 executeCommand (External command args) = do
 
   maybeCommandPath <- liftIO $ getCommand $ T.unpack command
