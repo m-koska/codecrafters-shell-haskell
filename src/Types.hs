@@ -60,11 +60,16 @@ data KeyType
   = TabKey   -- ^ Indicates the immediate previous action was a <TAB> key press.
   | OtherKey -- ^ Represents any other standard character, backspace, or newline input.
 
+data JobInfo = JobInfo 
+  { job_handle :: ProcessHandle
+  , job_cmd :: T.Text
+  }
+
 data ShellState = ShellState 
   { buffer            :: String
   , prev_key          :: KeyType
   , completions       :: Map.Map T.Text FilePath
-  , bg_jobs           :: Map.Map Int ProcessHandle
+  , bg_jobs           :: Map.Map Int JobInfo
   , next_job_id       :: Int
   , is_next_cmd_in_bg :: Bool
   }

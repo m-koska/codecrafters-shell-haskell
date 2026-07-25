@@ -158,6 +158,31 @@ executeCommand (BuiltIn (Complete args)) = do
   return True
 
 executeCommand (BuiltIn Jobs) = do
+  state <- get
+  let jobs_map = bg_jobs state
+
+  active_jobs <- liftIO $ filterM (\(_, jobs) -> do
+    exit_code <- getProcessExitCode (job_handle jobs)
+
+    return $ case exit_code of 
+      Nothing -> True
+      Just _  -> False
+
+    ) (Map.toList jobs_map)
+
+  modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
+
+  let max_id = if null active_jobs then 0 else maximum (map fst active_jobs)
+
+  forM_ active_jobs $ \(j_id, job) -> do
+      let sign = if j_id == max_id then "+" else "-"
+
+          status_padded = "Running" ++ replicate 17 ' '
+          
+          output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status_padded ++ T.unpack (job_cmd job)
+          
+      liftIO $ putStrLn output
+
   return True
 
 executeCommand (External command args) = do
@@ -178,10 +203,14 @@ executeCommand (External command args) = do
           pid <- liftIO $ getPid processHandle
 
           let os_pid = maybe "unknown" show pid
-              j_id = next_job_id state
+          let j_id = next_job_id state
+
+          let args_str = T.unwords args
+          let cmd_str = T.concat[command, args_str, " &"]
+          let job_info = JobInfo processHandle cmd_str
 
           modify $ \s -> s
-            { bg_jobs = Map.insert j_id processHandle (bg_jobs s)
+            { bg_jobs = Map.insert j_id job_info (bg_jobs s)
             , next_job_id = j_id + 1
             }
 
