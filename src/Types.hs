@@ -12,6 +12,7 @@ module Types where
 import Control.Monad.State
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import System.Process (ProcessHandle)
 
 data TokenState
   = NormalText
@@ -42,6 +43,7 @@ data BuiltInCommand
 data AST
   = ExecNode Command                                      -- ^ Terminal leaf node representing a command execution.
   | RedirectNode RedirectionType AST FilePath WriteMethod -- ^ Wraps an AST node to capture and redirect its output stream.
+  | BackgroundJobNode AST
 
 -- | Specifies which output descriptor is captured for redirection.
 data RedirectionType
@@ -59,9 +61,12 @@ data KeyType
   | OtherKey -- ^ Represents any other standard character, backspace, or newline input.
 
 data ShellState = ShellState 
-  { buffer   :: String
-  , prev_key :: KeyType
-  , completions :: Map.Map T.Text FilePath
+  { buffer            :: String
+  , prev_key          :: KeyType
+  , completions       :: Map.Map T.Text FilePath
+  , bg_jobs           :: Map.Map Int ProcessHandle
+  , next_job_id       :: Int
+  , is_next_cmd_in_bg :: Bool
   }
 
 type Shell a = StateT ShellState IO a

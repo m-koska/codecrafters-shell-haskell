@@ -16,26 +16,30 @@ import Types
 
 walkAST :: [T.Text] -> Either T.Text AST
 walkAST token_list = 
-  let (left_side, right_side) = break (\x -> x `elem` [">", "1>", "2>", ">>", "1>>", "2>>"]) token_list
-  
-  in case right_side of
-    
-    [] -> parseCommand left_side
+  let is_bg = not (null token_list) && last token_list == "&"
+      tokens_to_parse = if is_bg then init token_list else token_list      
 
-    (operator : file : rest) ->
-      
-      let redirection_type = case operator of
-            t | t `elem` ["2>", "2>>"] -> ErrorRedirection
-            _    -> StandardRedirection
-          write_method = case operator of
-            t | t `elem` [">>", "1>>", "2>>"] -> AppendMethod
-            _ -> TruncateMethod
+      (left_side, right_side) = break (\x -> x `elem` [">", "1>", "2>", ">>", "1>>", "2>>"]) tokens_to_parse
+   
+      ast_node = case right_side of
+        [] -> parseCommand left_side
 
-      in case walkAST (left_side ++ rest) of 
-        Left _err     -> Left _err
-        Right cmd_ast -> Right (RedirectNode redirection_type cmd_ast (T.unpack file) write_method)
-    
-    [_] -> Left "error"
+        (operator : file : rest) ->
+          let redirection_type = case operator of
+                t | t `elem` ["2>", "2>>"] -> ErrorRedirection
+                _    -> StandardRedirection
+              write_method = case operator of
+                t | t `elem` [">>", "1>>", "2>>"] -> AppendMethod
+                _ -> TruncateMethod
+
+          in case walkAST (left_side ++ rest) of 
+            Left _err     -> Left _err
+            Right cmd_ast -> Right (RedirectNode redirection_type cmd_ast (T.unpack file) write_method)
+        
+        [_] -> Left "error"
+  in if is_bg
+    then fmap BackgroundJobNode ast_node
+    else ast_node
 
 parseCommand :: [T.Text] -> Either T.Text AST
 parseCommand input_command = 

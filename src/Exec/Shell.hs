@@ -31,18 +31,21 @@ import Parse.Parser
 import Types
 
 processCommand :: AST -> Shell Bool 
-
 processCommand (ExecNode command) = executeCommand command
 
+processCommand (BackgroundJobNode inner_ast) = do
+  modify $ \s -> s { is_next_cmd_in_bg = True }
+  result <- processCommand inner_ast
+  modify $ \s -> s { is_next_cmd_in_bg = False }
+  return result
+
 processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
-  
   liftIO $ IOHandle.hFlush stdout
   liftIO $ IOHandle.hFlush stderr
   -- bracket: try something, do another thing afterwards in case it fails
   -- bracket setup teardown try_something
 
   let
-
     target_std_fd = case redirection_type of
       StandardRedirection -> stdOutput
       ErrorRedirection    -> stdError
@@ -73,11 +76,9 @@ processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
 
 -- builtin commands handling
 executeCommand :: Command -> Shell Bool
-
 executeCommand Blank = return True
 
 executeCommand (BuiltIn (Cd args)) = do
-
   home_directory <- liftIO getHomeDirectory
   let home_path = T.pack home_directory
   let path = T.replace (T.pack "~") home_path args
@@ -160,20 +161,33 @@ executeCommand (BuiltIn Jobs) = do
   return True
 
 executeCommand (External command args) = do
-
   maybeCommandPath <- liftIO $ getCommand $ T.unpack command
 
   case maybeCommandPath of
-    
     Nothing -> liftIO $ T.IO.putStrLn (T.concat[command, ": command not found"])
     
     Just _ -> do
-      -- proc constructort
+      -- proc constructor
       let process = proc (T.unpack command) (map T.unpack args)
 
       (_, _, _, processHandle) <- liftIO $ createProcess process
-      _ <- liftIO $ waitForProcess processHandle
+      
+      state <- get
+      if is_next_cmd_in_bg state 
+        then do
+          pid <- liftIO $ getPid processHandle
 
-      pure ()
-  
+          let os_pid = maybe "unknown" show pid
+              j_id = next_job_id state
+
+          modify $ \s -> s
+            { bg_jobs = Map.insert j_id processHandle (bg_jobs s)
+            , next_job_id = j_id + 1
+            }
+
+          liftIO $ putStrLn $ "[" ++ show j_id ++ "] " ++ os_pid 
+
+        else do
+          _ <- liftIO $ waitForProcess processHandle
+          pure() 
   return True
