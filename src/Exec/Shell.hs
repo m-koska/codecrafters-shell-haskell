@@ -205,7 +205,7 @@ executeCommand (External command args) = do
           let os_pid = maybe "unknown" show pid
           let j_id = next_job_id state
 
-          let args_str = T.unwords args
+          let args_str = T.concat[if null args then "" else " ", T.unwords args]
           let cmd_str = T.concat[command, args_str, " &"]
           let job_info = JobInfo processHandle cmd_str
 
