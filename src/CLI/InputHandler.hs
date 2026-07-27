@@ -66,6 +66,7 @@ handleEnter = do
       liftIO $ putChar '\n'
       reapJobs
       liftIO $ T.IO.putStr "$ "
+      liftIO $ hFlush stdout
       modify $ \state ->
         state { history_index = 0 }
       mainLoop
@@ -81,6 +82,7 @@ handleEnter = do
           liftIO $ T.IO.putStr $ T.concat ["syntax error: ", err]
           reapJobs
           liftIO $ T.IO.putStr "$ "
+          liftIO $ hFlush stdout
           modify $ \s ->
             s { buffer = ""
               , prev_key = OtherKey
@@ -93,6 +95,7 @@ handleEnter = do
           when continue $ do
             reapJobs
             liftIO $ T.IO.putStr "$ "
+            liftIO $ hFlush stdout
             modify $ \s ->
               s { buffer = ""
                 , prev_key = OtherKey
@@ -109,12 +112,14 @@ handleBackspace = do
   case buffer state of
     ""  -> do
       liftIO $ putChar '\x07'
+      liftIO $ hFlush stdout
 
       modify $ \s ->
         s {prev_key = OtherKey}
 
     buf -> do
       liftIO $ T.IO.putStr "\b \b"
+      liftIO $ hFlush stdout
 
       modify $ \s ->
         s 
@@ -144,9 +149,12 @@ handleUpArrow = do
 
       liftIO $ T.IO.putStr "\ESC[1K\r"
       liftIO $ T.IO.putStr $ "$ " <> new_buffer
+      liftIO $ T.IO.putStr $ "$ " <> new_buffer 
+      liftIO $ hFlush stdout
 
-    else
+    else do
       liftIO $ putChar '\a'
+      liftIO $ hFlush stdout
 
   mainLoop
 
@@ -169,6 +177,7 @@ handleDownArrow = do
               }
           liftIO $ T.IO.putStr "\ESC[1K\r"
           liftIO $ T.IO.putStr "$ "
+          liftIO $ hFlush stdout
         else do
           let new_buffer = current_history !! (new_index - 1)
           modify $ \s -> 
@@ -178,8 +187,10 @@ handleDownArrow = do
               }
           liftIO $ T.IO.putStr "\ESC[1K\r"
           liftIO $ T.IO.putStr $ "$ " <> new_buffer
-    else
+          liftIO $ hFlush stdout
+    else do
       liftIO $ putChar '\a'
+      liftIO $ hFlush stdout
 
   mainLoop
   
