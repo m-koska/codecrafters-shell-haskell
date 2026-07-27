@@ -99,6 +99,7 @@ handleEnter = do
             modify $ \s ->
               s { buffer = ""
                 , prev_key = OtherKey
+                , history_index = 0
                 }
 
             mainLoop
@@ -149,7 +150,6 @@ handleUpArrow = do
 
       liftIO $ T.IO.putStr "\ESC[1K\r"
       liftIO $ T.IO.putStr $ "$ " <> new_buffer
-      liftIO $ T.IO.putStr $ "$ " <> new_buffer 
       liftIO $ hFlush stdout
 
     else do
