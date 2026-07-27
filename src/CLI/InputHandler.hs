@@ -24,6 +24,7 @@ import Parse.Parser
 import Parse.Tokeniser
 import Types
 import System.Process (getProcessExitCode)
+import Data.List
 
 mainLoop :: Shell () 
 mainLoop = do
@@ -50,17 +51,35 @@ handleEnter:: Shell()
 handleEnter = do
   state <- get
 
-  -- reap jobs
   let jobs_map = bg_jobs state
 
-  active_jobs <- liftIO $ filterM (\(_, job_info) -> do
-      exit_code <- liftIO $ getProcessExitCode $ job_handle job_info
-      return $ case exit_code of
-          Just _ -> False
-          Nothing -> True
-    ) (Map.toList jobs_map)
+  jobs <- liftIO $ forM (Map.toList jobs_map) $ \(j_id, job_inf) -> do
+    exit_code <- getProcessExitCode (job_handle job_inf) 
+    return (j_id, job_inf, exit_code)
 
+  let active_jobs = 
+          [ (j_id, job)
+          | (j_id, job, Nothing) <- jobs
+          ]
   modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
+
+  let ids = sort [j_id | (j_id, _, _) <- jobs]  
+  let (current, previous) = 
+        case reverse ids of 
+          (x:y:_) -> (Just x, Just y)
+          [x]            -> (Just x, Nothing)
+          _                    -> (Nothing, Nothing)
+
+  forM_ jobs $ \(j_id, job, exit_code) -> do
+      let sign
+            | Just j_id == current  = "+"
+            | Just j_id == previous = "-"
+            | otherwise             = " " 
+
+      forM_ exit_code $ \_ -> do
+          let status = "Done" ++ replicate 17 ' '
+              output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status ++ T.unpack (job_cmd job)
+          liftIO $ putStrLn output
 
   case buffer state of
     "" -> do
