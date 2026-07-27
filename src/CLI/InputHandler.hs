@@ -46,6 +46,7 @@ mainLoop = do
         c3 <- liftIO getChar 
         case (c2, c3) of 
           ('[', 'A') -> handleUpArrow
+          ('[', 'B') -> handleDownArrow
     regular -> handleRegularChar regular
 
 
@@ -65,6 +66,8 @@ handleEnter = do
       liftIO $ putChar '\n'
       reapJobs
       liftIO $ T.IO.putStr "$ "
+      modify $ \state ->
+        state { history_index = 0 }
       mainLoop
 
     buffer -> do 
@@ -81,6 +84,7 @@ handleEnter = do
           modify $ \s ->
             s { buffer = ""
               , prev_key = OtherKey
+              , history_index = 0
               }
 
           mainLoop      
@@ -131,17 +135,54 @@ handleUpArrow = do
   let can_go = current_index < max_index
   if can_go
     then do
-      let new_buffer = history state !! current_index
+      let new_buffer = current_history !! current_index
       modify $ \state -> 
-        state { history_index = current_index + 1 }
+        state { history_index = current_index + 1
+              , buffer        = T.unpack new_buffer
+              , prev_key      = OtherKey
+              }
 
       liftIO $ T.IO.putStr "\ESC[1K\r"
       liftIO $ T.IO.putStr $ "$ " <> new_buffer
+
     else
       liftIO $ putChar '\a'
 
   mainLoop
 
+handleDownArrow :: Shell ()
+handleDownArrow = do
+  state <- get
+
+  let current_history = history state
+      current_index = history_index state
+
+  if current_index > 0
+    then do
+      let new_index = current_index - 1
+      if new_index == 0
+        then do
+          modify $ \s -> 
+            s { history_index = 0
+              , buffer        = ""
+              , prev_key      = OtherKey
+              }
+          liftIO $ T.IO.putStr "\ESC[1K\r"
+          liftIO $ T.IO.putStr "$ "
+        else do
+          let new_buffer = current_history !! (new_index - 1)
+          modify $ \s -> 
+            s { history_index = new_index
+              , buffer        = T.unpack new_buffer
+              , prev_key      = OtherKey
+              }
+          liftIO $ T.IO.putStr "\ESC[1K\r"
+          liftIO $ T.IO.putStr $ "$ " <> new_buffer
+    else
+      liftIO $ putChar '\a'
+
+  mainLoop
+  
 handleRegularChar :: Char -> Shell ()
 handleRegularChar ch = do
   liftIO $ putChar ch
