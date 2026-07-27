@@ -205,19 +205,20 @@ executeCommand (BuiltIn (History args)) = do
 
   state <- get
   
-  let history_entries = reverse $ history state
+  let history_entries = 
+          zip ([1..] :: [Int]) (reverse $ history state)
   
   if T.null args
     then
-      forM_ (zip ([1..] :: [Int]) history_entries) $ \(i, cmd) -> do
+      forM_ history_entries $ \(i, cmd) -> do
         let line = T.pack (printf "%5d  " i) <> cmd
         liftIO $ T.IO.putStrLn line
 
     else
       case T.R.decimal args of
         Right (n, _) -> do
-          let selected = take n history_entries
-          forM_ (zip ([1..] :: [Int]) selected) $ \(i, cmd) -> do
+          let selected = take n $ reverse history_entries
+          forM_ (reverse selected) $ \(i, cmd) -> do
             let line = T.pack (printf "%5d  " i) <> cmd
             liftIO $ T.IO.putStrLn line
         Left _ ->
