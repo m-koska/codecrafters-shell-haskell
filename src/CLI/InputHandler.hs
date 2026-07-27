@@ -25,6 +25,7 @@ import Parse.Tokeniser
 import Types
 import System.Process (getProcessExitCode)
 import Data.List
+import Data.List.NonEmpty (append)
 
 mainLoop :: Shell () 
 mainLoop = do
@@ -59,6 +60,8 @@ handleEnter = do
       mainLoop
 
     buffer -> do 
+      modify $ \s ->
+        s { history = T.pack buffer : history s}
       liftIO $ putChar '\n'
       let (input_tokenised, state) = tokeniseInput (T.pack buffer)
       -- walking the AST tree

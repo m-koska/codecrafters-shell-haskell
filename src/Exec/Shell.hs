@@ -197,6 +197,16 @@ executeCommand (BuiltIn Jobs) = do
 
   return True
 
+executeCommand (BuiltIn History) = do
+
+  state <- get
+
+  let history_list = history state
+
+
+
+  return True
+
 executeCommand (External command args) = do
   maybeCommandPath <- liftIO $ getCommand $ T.unpack command
 

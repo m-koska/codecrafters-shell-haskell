@@ -73,6 +73,7 @@ data ShellState = ShellState
   , bg_jobs           :: Map.Map Int JobInfo
   , next_job_id       :: Int
   , is_next_cmd_in_bg :: Bool
+  , history           :: [T.Text]
   }
 
 type Shell a = StateT ShellState IO a

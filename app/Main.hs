@@ -36,6 +36,7 @@ main = do
         , bg_jobs = Map.empty
         , next_job_id = 1
         , is_next_cmd_in_bg = False
+        , history = []
         }
 
   evalStateT mainLoop initial_state
