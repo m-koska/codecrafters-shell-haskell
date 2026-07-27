@@ -172,11 +172,11 @@ executeCommand (BuiltIn Jobs) = do
           ]
   modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
 
-  let ids = sort (map fst active_jobs)  
+  let ids = sort [j_id | (j_id, _, _) <- jobs]  
   let (current, previous) = 
         case reverse ids of 
-          (current:previous:_) -> (Just current, Just previous)
-          [current]            -> (Just current, Nothing)
+          (x:y:_) -> (Just x, Just y)
+          [x]            -> (Just x, Nothing)
           _                    -> (Nothing, Nothing)
 
   forM_ jobs $ \(j_id, job, exit_code) -> do
@@ -189,7 +189,7 @@ executeCommand (BuiltIn Jobs) = do
             Just _ -> 
               ("Done" ++ replicate 17 ' ', job_cmd job)
             Nothing -> 
-              ("Running" ++ replicate 17 ' ', T.concat[job_cmd job, " &"])
+              ("Running" ++ replicate 14 ' ', T.concat[job_cmd job, " &"])
 
       let output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status ++ T.unpack (job_cmd job)
           
