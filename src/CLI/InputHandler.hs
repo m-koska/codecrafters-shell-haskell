@@ -23,6 +23,7 @@ import Exec.Shell
 import Parse.Parser
 import Parse.Tokeniser
 import Types
+import System.Process (getProcessExitCode)
 
 mainLoop :: Shell () 
 mainLoop = do
@@ -48,6 +49,18 @@ handleTab input_tokenised token_state = do
 handleEnter:: Shell()
 handleEnter = do
   state <- get
+
+  -- reap jobs
+  let jobs_map = bg_jobs state
+
+  active_jobs <- liftIO $ filterM (\(_, job_info) -> do
+      exit_code <- liftIO $ getProcessExitCode $ job_handle job_info
+      return $ case exit_code of
+          Just _ -> False
+          Nothing -> True
+    ) (Map.toList jobs_map)
+
+  modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
 
   case buffer state of
     "" -> do
