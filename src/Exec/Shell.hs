@@ -191,9 +191,7 @@ executeCommand (BuiltIn Jobs) = do
             Nothing -> 
               ("Running" ++ replicate 17 ' ', T.concat[job_cmd job, " &"])
 
-      let status_padded = "Running" ++ replicate 17 ' '
-          
-          output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status_padded ++ T.unpack (job_cmd job)
+      let output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status ++ T.unpack (job_cmd job)
           
       liftIO $ putStrLn output
 
