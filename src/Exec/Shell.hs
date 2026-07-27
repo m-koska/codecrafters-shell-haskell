@@ -30,6 +30,7 @@ import Exec.Command
 import Parse.Parser
 import Types
 import Data.List
+import Text.Printf (printf)
 
 processCommand :: AST -> Shell Bool 
 processCommand (ExecNode command) = executeCommand command
@@ -201,9 +202,11 @@ executeCommand (BuiltIn History) = do
 
   state <- get
 
-  let history_list = history state
+  let history_entries = reverse $ history state
 
-
+  forM_ (zip ([1..] :: [Int]) history_entries) $ \(i, cmd) -> do
+      let line = T.pack (printf "%5d  " i) <> cmd
+      liftIO $ T.IO.putStrLn line
 
   return True
 
