@@ -162,15 +162,14 @@ executeCommand (BuiltIn Jobs) = do
   state <- get
   let jobs_map = bg_jobs state
 
-  active_jobs <- liftIO $ filterM (\(_, jobs) -> do
-    exit_code <- getProcessExitCode (job_handle jobs)
+  jobs <- liftIO $ forM (Map.toList jobs_map) $ \(j_id, job_inf) -> do
+    exit_code <- getProcessExitCode (job_handle job_inf) 
+    return (j_id, job_inf, exit_code)
 
-    return $ case exit_code of 
-      Nothing -> True
-      Just _  -> False
-
-    ) (Map.toList jobs_map)
-
+  let active_jobs = 
+          [ (j_id, job)
+          | (j_id, job, Nothing) <- jobs
+          ]
   modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
 
   let ids = sort (map fst active_jobs)  
@@ -180,16 +179,19 @@ executeCommand (BuiltIn Jobs) = do
           [current]            -> (Just current, Nothing)
           _                    -> (Nothing, Nothing)
 
-  -- liftIO $ print ids
-  -- liftIO $ print (current, previous)
-
-  forM_ active_jobs $ \(j_id, job) -> do
+  forM_ jobs $ \(j_id, job, exit_code) -> do
       let sign
             | Just j_id == current  = "+"
             | Just j_id == previous = "-"
             | otherwise             = " " 
 
-          status_padded = "Running" ++ replicate 17 ' '
+      let (status, job_cmd_str) = case exit_code of
+            Just _ -> 
+              ("Done" ++ replicate 20 ' ', job_cmd job)
+            Nothing -> 
+              ("Running" ++ replicate 17 ' ', T.concat[job_cmd job, " &"])
+
+      let status_padded = "Running" ++ replicate 17 ' '
           
           output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status_padded ++ T.unpack (job_cmd job)
           
@@ -218,7 +220,7 @@ executeCommand (External command args) = do
           let j_id = next_job_id state
 
           let args_str = T.concat[if null args then "" else " ", T.unwords args]
-          let cmd_str = T.concat[command, args_str, " &"]
+          let cmd_str = T.concat[command, args_str]
           let job_info = JobInfo processHandle cmd_str
 
           modify $ \s -> s
