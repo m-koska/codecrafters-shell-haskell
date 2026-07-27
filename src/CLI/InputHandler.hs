@@ -26,6 +26,7 @@ import Types
 import System.Process (getProcessExitCode)
 import Data.List
 import Data.List.NonEmpty (append)
+import System.IO
 
 mainLoop :: Shell () 
 mainLoop = do
@@ -38,6 +39,13 @@ mainLoop = do
       state <- get 
       let (input_tokenised, token_state) = tokeniseInput (T.pack $ buffer state)
       handleTab input_tokenised token_state 
+    '\ESC'  -> do
+      is_an_arrow <- liftIO $ hReady stdin
+      when is_an_arrow $ do
+        c2 <- liftIO getChar
+        c3 <- liftIO getChar 
+        case (c2, c3) of 
+          ('[', 'A') -> handleUpArrow
     regular -> handleRegularChar regular
 
 
@@ -111,7 +119,28 @@ handleBackspace = do
         }
 
   mainLoop
-  
+
+handleUpArrow :: Shell ()
+handleUpArrow = do
+  state <- get 
+
+  let current_history = history state
+      current_index = history_index state
+      max_index = length current_history
+      
+  let can_go = current_index < max_index
+  if can_go
+    then do
+      let new_buffer = history state !! current_index
+      modify $ \state -> 
+        state { history_index = current_index + 1 }
+
+      liftIO $ T.IO.putStr "\ESC[1K\r"
+      liftIO $ T.IO.putStr $ "$ " <> new_buffer
+    else
+      liftIO $ putChar '\a'
+
+  mainLoop
 
 handleRegularChar :: Char -> Shell ()
 handleRegularChar ch = do
