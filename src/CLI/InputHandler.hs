@@ -130,12 +130,20 @@ reapJobs = do
     exit_code <- getProcessExitCode (job_handle job_inf)
     return (j_id, job_inf, exit_code)
 
-  let active_jobs =
+  let active_map = Map.fromList
         [ (j_id, job)
         | (j_id, job, Nothing) <- jobs
         ]
 
-  modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
+  let new_next_id =
+        case Map.keys active_map of
+          [] -> 1
+          xs -> maximum xs + 1
+
+  modify $ \s -> s
+    { bg_jobs = active_map
+    , next_job_id = new_next_id
+    }
 
   let ids = sort [j_id | (j_id, _, _) <- jobs]
 
