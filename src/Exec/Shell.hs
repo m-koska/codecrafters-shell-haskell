@@ -187,7 +187,7 @@ executeCommand (BuiltIn Jobs) = do
 
       let (status, job_cmd_str) = case exit_code of
             Just _ -> 
-              ("Done" ++ replicate 20 ' ', job_cmd job)
+              ("Done" ++ replicate 17 ' ', job_cmd job)
             Nothing -> 
               ("Running" ++ replicate 17 ' ', T.concat[job_cmd job, " &"])
 
