@@ -51,39 +51,10 @@ handleEnter:: Shell()
 handleEnter = do
   state <- get
 
-  let jobs_map = bg_jobs state
-
-  jobs <- liftIO $ forM (Map.toList jobs_map) $ \(j_id, job_inf) -> do
-    exit_code <- getProcessExitCode (job_handle job_inf) 
-    return (j_id, job_inf, exit_code)
-
-  let active_jobs = 
-          [ (j_id, job)
-          | (j_id, job, Nothing) <- jobs
-          ]
-  modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
-
-  let ids = sort [j_id | (j_id, _, _) <- jobs]  
-  let (current, previous) = 
-        case reverse ids of 
-          (x:y:_) -> (Just x, Just y)
-          [x]            -> (Just x, Nothing)
-          _                    -> (Nothing, Nothing)
-
-  forM_ jobs $ \(j_id, job, exit_code) -> do
-      let sign
-            | Just j_id == current  = "+"
-            | Just j_id == previous = "-"
-            | otherwise             = " " 
-
-      forM_ exit_code $ \_ -> do
-          let status = "Done" ++ replicate 17 ' '
-              output = "[" ++ show j_id ++ "]" ++ sign ++ "  " ++ status ++ T.unpack (job_cmd job)
-          liftIO $ putStrLn output
-
   case buffer state of
     "" -> do
       liftIO $ putChar '\n'
+      reapJobs
       liftIO $ T.IO.putStr "$ "
       mainLoop
 
@@ -94,6 +65,7 @@ handleEnter = do
       case walkAST input_tokenised of
         Left err -> do
           liftIO $ T.IO.putStr $ T.concat ["syntax error: ", err]
+          reapJobs
           liftIO $ T.IO.putStr "$ "
           modify $ \s ->
             s { buffer = ""
@@ -104,6 +76,7 @@ handleEnter = do
         Right ast -> do
           continue <- processCommand ast
           when continue $ do
+            reapJobs
             liftIO $ T.IO.putStr "$ "
             modify $ \s ->
               s { buffer = ""
@@ -148,3 +121,41 @@ handleRegularChar ch = do
     }
 
   mainLoop
+
+reapJobs :: Shell () 
+reapJobs = do 
+  state <- get
+
+  jobs <- liftIO $ forM (Map.toList (bg_jobs state)) $ \(j_id, job_inf) -> do
+    exit_code <- getProcessExitCode (job_handle job_inf)
+    return (j_id, job_inf, exit_code)
+
+  let active_jobs =
+        [ (j_id, job)
+        | (j_id, job, Nothing) <- jobs
+        ]
+
+  modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
+
+  let ids = sort [j_id | (j_id, _, _) <- jobs]
+
+      (current, previous) =
+        case reverse ids of
+          (x:y:_) -> (Just x, Just y)
+          [x]     -> (Just x, Nothing)
+          _       -> (Nothing, Nothing)
+
+  forM_ jobs $ \(j_id, job, exit_code) ->
+    forM_ exit_code $ \_ -> do
+      let sign
+            | Just j_id == current  = "+"
+            | Just j_id == previous = "-"
+            | otherwise             = " "
+
+          output =
+            "[" ++ show j_id ++ "]"
+            ++ sign
+            ++ "  Done                 "
+            ++ T.unpack (job_cmd job)
+
+      liftIO $ putStrLn output
