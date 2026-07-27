@@ -24,6 +24,7 @@ import System.Process
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
+import qualified Data.Text.Read as T.R
 import qualified GHC.IO.Handle as IOHandle
 
 import Exec.Command
@@ -31,6 +32,8 @@ import Parse.Parser
 import Types
 import Data.List
 import Text.Printf (printf)
+import Control.Applicative
+import qualified Data.Text.IO as T
 
 processCommand :: AST -> Shell Bool 
 processCommand (ExecNode command) = executeCommand command
@@ -198,15 +201,27 @@ executeCommand (BuiltIn Jobs) = do
 
   return True
 
-executeCommand (BuiltIn History) = do
+executeCommand (BuiltIn (History args)) = do
 
   state <- get
-
+  
   let history_entries = reverse $ history state
+  
+  if T.null args
+    then
+      forM_ (zip ([1..] :: [Int]) history_entries) $ \(i, cmd) -> do
+        let line = T.pack (printf "%5d  " i) <> cmd
+        liftIO $ T.IO.putStrLn line
 
-  forM_ (zip ([1..] :: [Int]) history_entries) $ \(i, cmd) -> do
-      let line = T.pack (printf "%5d  " i) <> cmd
-      liftIO $ T.IO.putStrLn line
+    else
+      case T.R.decimal args of
+        Right (n, _) -> do
+          let selected = take n history_entries
+          forM_ (zip ([1..] :: [Int]) selected) $ \(i, cmd) -> do
+            let line = T.pack (printf "%5d  " i) <> cmd
+            liftIO $ T.IO.putStrLn line
+        Left _ ->
+          liftIO $ T.IO.putStrLn "history: invalid number"
 
   return True
 
