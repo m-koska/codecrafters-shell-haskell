@@ -29,6 +29,7 @@ import qualified GHC.IO.Handle as IOHandle
 import Exec.Command
 import Parse.Parser
 import Types
+import Data.List
 
 processCommand :: AST -> Shell Bool 
 processCommand (ExecNode command) = executeCommand command
@@ -172,10 +173,21 @@ executeCommand (BuiltIn Jobs) = do
 
   modify $ \s -> s { bg_jobs = Map.fromList active_jobs }
 
-  let max_id = if null active_jobs then 0 else maximum (map fst active_jobs)
+  let ids = sort (map fst active_jobs)  
+  let (current, previous) = 
+        case reverse ids of 
+          (current:previous:_) -> (Just current, Just previous)
+          [current]            -> (Just current, Nothing)
+          _                    -> (Nothing, Nothing)
+
+  -- liftIO $ print ids
+  -- liftIO $ print (current, previous)
 
   forM_ active_jobs $ \(j_id, job) -> do
-      let sign = if j_id == max_id then "+" else "-"
+      let sign
+            | Just j_id == current  = "+"
+            | Just j_id == previous = "-"
+            | otherwise             = " " 
 
           status_padded = "Running" ++ replicate 17 ' '
           
