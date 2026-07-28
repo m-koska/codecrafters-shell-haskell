@@ -282,7 +282,7 @@ executeCommand (BuiltIn (Declare args)) = do
       case args_parsed of
         [var] ->
           case Map.lookup var (shell_vars state) of
-            Just value -> liftIO $ T.IO.putStrLn $ "declare -- " <> var <> "=" <> value
+            Just value -> liftIO $ T.IO.putStrLn $ "declare -- " <> var <> "=" <> "\"" <> value <> "\""
             Nothing -> liftIO $ T.IO.putStrLn $ "declare: " <> var <> ": not found"
 
         _     -> liftIO $ T.IO.putStrLn "declare: invalid variable provided"
