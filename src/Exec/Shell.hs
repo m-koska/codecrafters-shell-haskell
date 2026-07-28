@@ -79,11 +79,9 @@ processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
 
   bracket setup teardown (\_ -> processCommand deeper_ast)
 
-
 -- builtin commands handling
 executeCommand :: Command -> Shell Bool
 executeCommand Blank = return True
-
 executeCommand (BuiltIn (Cd args)) = do
   home_directory <- liftIO getHomeDirectory
   let home_path = T.pack home_directory
@@ -276,7 +274,17 @@ executeCommand (BuiltIn (History args)) = do
           liftIO $ T.IO.putStrLn "history: invalid path"
 
 executeCommand (BuiltIn (Declare args)) = do
+  let (flags, args_parsed) = parseFlags args
 
+  case flags of 
+    ("p":_) ->
+      case args_parsed of
+        [var] ->
+          liftIO $ T.IO.putStrLn $ "declare: " <> var <> ": not found"
+
+        _     -> liftIO $ T.IO.putStrLn "declare: invalid variable provided"
+
+    _       -> liftIO $ T.IO.putStrLn "declare: invalid args"
   return True
 
 executeCommand (External command args) = do
