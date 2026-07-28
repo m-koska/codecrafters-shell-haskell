@@ -51,4 +51,4 @@ main = do
   where 
     getHistory path = do
       text_lines <- T.IO.readFile path
-      return $ T.lines text_lines
+      return $ reverse $ T.lines text_lines
