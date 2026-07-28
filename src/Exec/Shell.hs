@@ -218,7 +218,7 @@ executeCommand (BuiltIn (History args)) = do
           case args_parsed of
             [path] -> do
               let to_write = T.unlines $ reverse $ history state
-              liftIO $ writeFile (T.unpack path) (T.unpack to_write)
+              liftIO $ T.IO.writeFile (T.unpack path) to_write
               pure ()
             _      -> liftIO $ T.IO.putStrLn "history: invalid path"
 
@@ -229,7 +229,7 @@ executeCommand (BuiltIn (History args)) = do
               let unwritten_history = drop (history_write_idx state) all_history
               let to_write = T.unlines unwritten_history
 
-              liftIO $ appendFile (T.unpack path) (T.unpack to_write)
+              liftIO $ T.IO.appendFile (T.unpack path) to_write
               modify $ \state -> state { history_write_idx = length all_history }
 
             _      -> liftIO $ T.IO.putStrLn "history: invalid path"
