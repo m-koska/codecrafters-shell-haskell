@@ -213,15 +213,27 @@ executeCommand (BuiltIn (History args)) = do
           case args_parsed of 
             [path] -> readHistory path
             _      -> liftIO $ putStrLn "history: invalid path"
+          
         ("w":_) ->
           case args_parsed of
             [path] -> do
               let to_write = T.unlines $ reverse $ history state
               liftIO $ writeFile (T.unpack path) (T.unpack to_write)
               pure ()
-            _      -> liftIO $ putStrLn "history: invalid path"
+            _      -> liftIO $ T.IO.putStrLn "history: invalid path"
 
-      --liftIO $ putStrLn "wczyta sie z pliku"
+        ("a":_) ->
+          case args_parsed of
+            [path] -> do
+              let all_history = reverse $ history state
+              let unwritten_history = drop (history_write_idx state) all_history
+              let to_write = T.unlines unwritten_history
+
+              liftIO $ appendFile (T.unpack path) (T.unpack to_write)
+              modify $ \state -> state { history_write_idx = length all_history }
+
+            _      -> liftIO $ T.IO.putStrLn "history: invalid path"
+
     else 
       case args_parsed of
         []     -> printHistory history_entries 
