@@ -275,6 +275,9 @@ executeCommand (BuiltIn (History args)) = do
         else 
           liftIO $ T.IO.putStrLn "history: invalid path"
 
+executeCommand (BuiltIn (Declare args)) = do
+
+  return True
 
 executeCommand (External command args) = do
   maybeCommandPath <- liftIO $ getCommand $ T.unpack command
