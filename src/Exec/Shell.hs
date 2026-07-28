@@ -299,8 +299,6 @@ executeCommand (BuiltIn (Declare args)) = do
                   let new_map = Map.insert var val variable_map
 
                   modify $ \state -> state { shell_vars = new_map }
-
-            _ -> liftIO $ T.IO.putStrLn "declare: invalid variable provided"
   return True
 
 executeCommand (External command args) = do
