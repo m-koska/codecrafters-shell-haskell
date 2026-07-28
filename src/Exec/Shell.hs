@@ -206,12 +206,22 @@ executeCommand (BuiltIn (History args)) = do
   
   let (flags, args_parsed) = parseFlags args
 
-  if not (null flags) && "r" `elem` flags
+  if not (null flags)
     then 
+      case flags of
+        ("r":_) -> 
+          case args_parsed of 
+            [path] -> readHistory path
+            _      -> liftIO $ putStrLn "history: invalid path"
+        ("w":_) ->
+          case args_parsed of
+            [path] -> do
+              let to_write = T.unlines $ reverse $ history state
+              liftIO $ writeFile (T.unpack path) (T.unpack to_write)
+              pure ()
+            _      -> liftIO $ putStrLn "history: invalid path"
+
       --liftIO $ putStrLn "wczyta sie z pliku"
-      case args_parsed of 
-        [path] -> readHistory path
-        _      -> liftIO $ putStrLn "history: invalid path"
     else 
       case args_parsed of
         []     -> printHistory history_entries 
