@@ -77,6 +77,7 @@ data ShellState = ShellState
   , history           :: [T.Text]
   , history_index     :: Int
   , history_write_idx :: Int
+  , shell_vars        :: Map.Map T.Text T.Text
   }
 
 type Shell a = StateT ShellState IO a

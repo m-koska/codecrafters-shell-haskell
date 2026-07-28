@@ -19,6 +19,7 @@ import Types
 import Control.Monad.State (evalStateT)
 import System.Environment (lookupEnv, getEnv)
 import qualified Data.Text as T
+import Types (ShellState(shell_vars))
 
 main :: IO ()
 main = do
@@ -45,6 +46,7 @@ main = do
         , history             = history
         , history_index       = 0
         , history_write_idx   = 0
+        , shell_vars          = Map.empty
         }
 
   evalStateT mainLoop initial_state

@@ -274,17 +274,33 @@ executeCommand (BuiltIn (History args)) = do
           liftIO $ T.IO.putStrLn "history: invalid path"
 
 executeCommand (BuiltIn (Declare args)) = do
+  state <- get
   let (flags, args_parsed) = parseFlags args
 
   case flags of 
     ("p":_) ->
       case args_parsed of
         [var] ->
-          liftIO $ T.IO.putStrLn $ "declare: " <> var <> ": not found"
+          case Map.lookup var (shell_vars state) of
+            Just value -> liftIO $ T.IO.putStrLn $ "declare -- " <> var <> "=" <> value
+            Nothing -> liftIO $ T.IO.putStrLn $ "declare: " <> var <> ": not found"
 
         _     -> liftIO $ T.IO.putStrLn "declare: invalid variable provided"
 
-    _       -> liftIO $ T.IO.putStrLn "declare: invalid args"
+    _       -> do
+      case args_parsed of
+        [txt] ->
+          case T.break (== '=') txt of
+            (l, r)
+              | T.null r  -> liftIO $ T.IO.putStrLn "declare: missing '='"
+              | otherwise -> do
+                  let (var, val) = (l, T.drop 1 r)
+                  let variable_map = shell_vars state
+                  let new_map = Map.insert var val variable_map
+
+                  modify $ \state -> state { shell_vars = new_map }
+
+            _ -> liftIO $ T.IO.putStrLn "declare: invalid variable provided"
   return True
 
 executeCommand (External command args) = do
