@@ -136,27 +136,24 @@ executeCommand (BuiltIn (Complete args)) = do
                     T.concat ["complete -C '", T.pack path, "' ", cmd]         
 
     ("C":_) ->
-      if length args_parsed == 2
-        then do 
-          let path = head args_parsed
-              cmd  = args_parsed !! 1
-          modify $ \s ->
-            s 
-            {
-              completions = Map.insert cmd (T.unpack path) (completions s)
-            }
-        else do liftIO $ T.IO.putStrLn "complate: invalid args"
-
-    ("r":_) ->
-      if length args_parsed == 1
-        then do
-          let cmd = head args_parsed
+      case args_parsed of
+        [path, cmd] -> do
           modify $ \s ->
             s
-            {
-              completions = Map.delete cmd (completions s)
-            }
-        else do liftIO $ T.IO.putStrLn "complate: invalid args"
+              { completions = Map.insert cmd (T.unpack path) (completions s)
+              }
+
+        _ ->
+          liftIO $ T.IO.putStrLn "complete: invalid args"
+
+    ("r":_) ->
+      case args_parsed of
+        [cmd] -> do
+          modify $ \s ->
+            s { completions = Map.delete cmd (completions s) }
+
+        _ -> do
+          liftIO $ T.IO.putStrLn "complete: invalid args"
 
     _ -> pure()
 
@@ -202,29 +199,51 @@ executeCommand (BuiltIn Jobs) = do
   return True
 
 executeCommand (BuiltIn (History args)) = do
-
   state <- get
   
   let history_entries = 
           zip ([1..] :: [Int]) (reverse $ history state)
   
-  if T.null args
-    then
-      forM_ history_entries $ \(i, cmd) -> do
+  let (flags, args_parsed) = parseFlags args
+
+  if not (null flags) && "r" `elem` flags
+    then 
+      --liftIO $ putStrLn "wczyta sie z pliku"
+      case args_parsed of 
+        [path] -> readHistory path
+        _      -> liftIO $ putStrLn "history: invalid path"
+    else 
+      case args_parsed of
+        []     -> printHistory history_entries 
+        [arg]  -> case T.R.decimal arg of
+          Right (n, rest)
+            -- let selected = take n $ reverse history_entries
+            | T.null rest -> printHistory (reverse $ take n $ reverse history_entries)
+
+          _ -> liftIO $ putStrLn "history: argument must be a number"
+
+        _      -> liftIO $ putStrLn "history: invalid argument"
+
+  return True
+  where 
+    printHistory :: [(Int, T.Text)] -> Shell ()
+    printHistory hist = do
+      forM_ hist $ \(i, cmd) -> do
         let line = T.pack (printf "%5d  " i) <> cmd
         liftIO $ T.IO.putStrLn line
 
-    else
-      case T.R.decimal args of
-        Right (n, _) -> do
-          let selected = take n $ reverse history_entries
-          forM_ (reverse selected) $ \(i, cmd) -> do
-            let line = T.pack (printf "%5d  " i) <> cmd
-            liftIO $ T.IO.putStrLn line
-        Left _ ->
-          liftIO $ T.IO.putStrLn "history: invalid number"
+    readHistory :: T.Text -> Shell ()
+    readHistory file = do
+      state <- get
+      exists <- liftIO $ doesFileExist (T.unpack file)
+      if exists
+        then do
+          contents <- T.lines <$> liftIO (T.IO.readFile $ T.unpack file)
+          let new_history = reverse contents ++ history state 
+          modify $ \state -> state { history = new_history } 
+        else 
+          liftIO $ T.IO.putStrLn "history: invalid path"
 
-  return True
 
 executeCommand (External command args) = do
   maybeCommandPath <- liftIO $ getCommand $ T.unpack command

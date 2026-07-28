@@ -37,7 +37,7 @@ data BuiltInCommand
   | Cd T.Text     -- ^ Changes the working directory.
   | Complete [T.Text]
   | Jobs
-  | History T.Text
+  | History [T.Text]
 
 -- | Abstract Syntax Tree (AST) representing the structure of a command line sequence.
 -- Handles wrapping command executions with file redirections.
