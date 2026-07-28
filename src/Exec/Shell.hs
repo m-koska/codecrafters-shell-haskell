@@ -103,6 +103,7 @@ executeCommand (BuiltIn Exit) = do
   
   case history_path of 
     Just path -> liftIO $ T.IO.writeFile path (T.unlines $ reverse (history state))
+    Nothing   -> pure ()
     
   return False
 
