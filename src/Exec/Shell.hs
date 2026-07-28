@@ -14,7 +14,7 @@ import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.RWS
 import System.Directory
-import System.Environment (executablePath)
+import System.Environment (executablePath, lookupEnv)
 import System.IO
 import System.OsPath
 import System.Posix
@@ -34,6 +34,7 @@ import Data.List
 import Text.Printf (printf)
 import Control.Applicative
 import qualified Data.Text.IO as T
+import Data.Maybe
 
 processCommand :: AST -> Shell Bool 
 processCommand (ExecNode command) = executeCommand command
@@ -96,7 +97,14 @@ executeCommand (BuiltIn (Cd args)) = do
 
   return True
 
-executeCommand (BuiltIn Exit) = return False
+executeCommand (BuiltIn Exit) = do
+  state <- get
+  history_path <- liftIO $ lookupEnv "HISTFILE"
+  
+  case history_path of 
+    Just path -> liftIO $ T.IO.writeFile path (T.unlines $ reverse (history state))
+    
+  return False
 
 executeCommand (BuiltIn (Echo args))  = do
   liftIO $ T.IO.putStrLn (T.unwords args)
