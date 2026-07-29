@@ -20,6 +20,7 @@ data TokenState
   | DoubleQuotedText
   | BackslashText
   | BackslashQuotedText
+  deriving Eq
 
 -- | Represents the primary execution unit parsed from the user input.
 -- It categorizes whether the target command runs natively or externally.

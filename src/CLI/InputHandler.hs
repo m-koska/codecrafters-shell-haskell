@@ -37,7 +37,7 @@ mainLoop = do
     '\DEL'  -> handleBackspace
     '\t'    -> do
       state <- get 
-      let (input_tokenised, token_state) = tokeniseInput (T.pack $ buffer state)
+      let (input_tokenised, token_state) = tokeniseInput (shell_vars state) (T.pack $ buffer state)
       handleTab input_tokenised token_state 
     '\ESC'  -> do
       is_an_arrow <- liftIO $ hReady stdin
@@ -75,7 +75,7 @@ handleEnter = do
       modify $ \s ->
         s { history = T.pack buffer : history s}
       liftIO $ putChar '\n'
-      let (input_tokenised, state) = tokeniseInput (T.pack buffer)
+      let (input_tokenised, token_state) = tokeniseInput (shell_vars state) (T.pack buffer)
       -- walking the AST tree
       case walkAST input_tokenised of
         Left err -> do

@@ -14,6 +14,7 @@ import Parse.Tokeniser (tokeniseInput)
 import System.Directory
 import Data.Maybe (listToMaybe, fromMaybe)
 import qualified Data.Text as T
+import qualified Data.Map as Map
 
 -- | Finds the longest common prefix among a list of strings.
 commonPrefix :: String -> String -> String
@@ -41,12 +42,12 @@ addSlashToDirectories = mapM $ \path -> do
 -- | Extracts the last word and the final token state from input.
 getLastWordContext :: T.Text -> (T.Text, TokenState)
 getLastWordContext input = 
-  let (tokens, state) = tokeniseInput input
+  let (tokens, state) = tokeniseInput Map.empty input
       lastWord = fromMaybe "" (listToMaybe (reverse tokens))
   in (lastWord, state)
 
 -- | Extracts the first word (command name) from input.
 getFirstWord :: T.Text -> T.Text
 getFirstWord input = 
-  let (tokens, _) = tokeniseInput input
+  let (tokens, _) = tokeniseInput Map.empty input
   in fromMaybe "" (listToMaybe tokens)

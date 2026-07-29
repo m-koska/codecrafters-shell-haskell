@@ -10,13 +10,14 @@ managing different quoting states (single, double) and escape characters.
 module Parse.Tokeniser where
 
 import qualified Data.Text as T
-
+import qualified Data.Map as Map
+import Data.Char (isLetter, isNumber)
 import Types
 
-tokeniseInput :: T.Text -> ([T.Text], TokenState)
-tokeniseInput = go NormalText [] []
+-- | Tokenises input while expanding $VAR references (unless enclosed in single quotes).
+tokeniseInput :: Map.Map T.Text T.Text -> T.Text -> ([T.Text], TokenState)
+tokeniseInput vars = go NormalText [] []
   where
-    -- go state current_word_acc finished_tokens remaining_text
     go :: TokenState -> [Char] -> [T.Text] -> T.Text -> ([T.Text], TokenState)
     go state acc tokens txt = case T.uncons txt of
       Nothing -> 
@@ -26,28 +27,43 @@ tokeniseInput = go NormalText [] []
         in (finalTokens, state)
 
       Just (ch, rest) -> case state of
-        NormalText -> case ch of
-          ' '  -> 
-            let newTokens = if null acc then tokens else T.pack (reverse acc) : tokens
-            in go NormalText [] newTokens rest
-          '\'' -> go SingleQuoteText acc tokens rest
-          '"'  -> go DoubleQuotedText acc tokens rest
-          '\\' -> go BackslashText acc tokens rest
-          _    -> go NormalText (ch : acc) tokens rest
+        -- Expands $VAR ONLY when state is NOT SingleQuoteText
+        _ | ch == '$' && state /= SingleQuoteText ->
+            case T.uncons rest of
+              Just (firstChar, _) | isLetter firstChar || firstChar == '_' ->
+                let (varName, remainder) = T.span (\c -> isLetter c || isNumber c || c == '_') rest
+                    val = Map.findWithDefault "" varName vars
+                -- Inject value back into the text stream to process it in current state
+                in go state acc tokens (val <> remainder)
 
-        SingleQuoteText -> case ch of
-          '\'' -> go NormalText acc tokens rest
-          _    -> go SingleQuoteText (ch : acc) tokens rest
+              _ -> processChar ch rest
 
-        DoubleQuotedText -> case ch of
-          '"'  -> go NormalText acc tokens rest
-          '\\' -> go BackslashQuotedText acc tokens rest
-          _    -> go DoubleQuotedText (ch : acc) tokens rest
+        _ -> processChar ch rest
 
-        BackslashText -> 
-          go NormalText (ch : acc) tokens rest
+      where
+        processChar ch rest = case state of
+          NormalText -> case ch of
+            ' '  -> 
+              let newTokens = if null acc then tokens else T.pack (reverse acc) : tokens
+              in go NormalText [] newTokens rest
+            '\'' -> go SingleQuoteText acc tokens rest
+            '"'  -> go DoubleQuotedText acc tokens rest
+            '\\' -> go BackslashText acc tokens rest
+            _    -> go NormalText (ch : acc) tokens rest
 
-        BackslashQuotedText -> 
-          if ch `elem` ['$', '"', '\\']
-            then go DoubleQuotedText (ch : acc) tokens rest
-            else go DoubleQuotedText (ch : '\\' : acc) tokens rest
+          SingleQuoteText -> case ch of
+            '\'' -> go NormalText acc tokens rest
+            _    -> go SingleQuoteText (ch : acc) tokens rest
+
+          DoubleQuotedText -> case ch of
+            '"'  -> go NormalText acc tokens rest
+            '\\' -> go BackslashQuotedText acc tokens rest
+            _    -> go DoubleQuotedText (ch : acc) tokens rest
+
+          BackslashText -> 
+            go NormalText (ch : acc) tokens rest
+
+          BackslashQuotedText -> 
+            if ch `elem` ['$', '"', '\\']
+              then go DoubleQuotedText (ch : acc) tokens rest
+              else go DoubleQuotedText (ch : '\\' : acc) tokens rest
