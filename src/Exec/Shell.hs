@@ -35,6 +35,7 @@ import Text.Printf (printf)
 import Control.Applicative
 import qualified Data.Text.IO as T
 import Data.Maybe
+import Data.Char
 
 processCommand :: AST -> Shell Bool 
 processCommand (ExecNode command) = executeCommand command
@@ -295,11 +296,21 @@ executeCommand (BuiltIn (Declare args)) = do
               | T.null r  -> liftIO $ T.IO.putStrLn "declare: missing '='"
               | otherwise -> do
                   let (var, val) = (l, T.drop 1 r)
-                  let variable_map = shell_vars state
-                  let new_map = Map.insert var val variable_map
+                  if validateIdentifier var
+                    then do
+                      let variable_map = shell_vars state
+                          new_map = Map.insert var val variable_map
 
-                  modify $ \state -> state { shell_vars = new_map }
+                      modify $ \state -> state { shell_vars = new_map }
+                    
+                    else 
+                      liftIO $ T.IO.putStrLn $ "declare: " <> var <> "=" <> val <> ": not a valid identifier"
   return True
+  where 
+    validateIdentifier var_name = 
+      case T.uncons var_name of
+        Just (ch, _) -> isLetter ch || ch == '_' 
+        Nothing      -> False
 
 executeCommand (External command args) = do
   maybeCommandPath <- liftIO $ getCommand $ T.unpack command
