@@ -32,6 +32,34 @@ import Exec.BuiltIns
 processCommand :: AST -> Shell Bool 
 processCommand (ExecNode command) = executeCommand command
 
+processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
+  liftIO $ IOHandle.hFlush stdout
+  liftIO $ IOHandle.hFlush stderr
+
+  let target_std_fd = case redirection_type of
+        StandardRedirection -> stdOutput
+        ErrorRedirection    -> stdError
+
+      posix_flags = case write_method of
+        TruncateMethod -> defaultFileFlags { trunc = True, creat = Just 0o644 }
+        AppendMethod   -> defaultFileFlags { append = True, creat = Just 0o644 }
+
+      setup :: Shell Fd
+      setup = do
+        backup_fd <- liftIO $ dup target_std_fd
+        write_fd  <- liftIO $ openFd file WriteOnly posix_flags
+        liftIO $ dupTo write_fd target_std_fd
+        liftIO $ closeFd write_fd
+        return backup_fd
+
+      teardown :: Fd -> Shell ()
+      teardown backup_fd = do
+        liftIO $ IOHandle.hFlush stdout
+        liftIO $ dupTo backup_fd target_std_fd
+        liftIO $ closeFd backup_fd
+
+  bracket setup teardown (\_ -> processCommand deeper_ast)
+  
 processCommand (BackgroundJobNode inner_ast) = do
   modify $ \s -> s { is_next_cmd_in_bg = True }
   result <- processCommand inner_ast
