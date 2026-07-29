@@ -27,15 +27,22 @@ tokeniseInput vars = go NormalText [] []
         in (finalTokens, state)
 
       Just (ch, rest) -> case state of
-        -- Expands $VAR ONLY when state is NOT SingleQuoteText
         _ | ch == '$' && state /= SingleQuoteText ->
             case T.uncons rest of
+              Just ('{', afterBrace) ->
+                let (varName, afterClose) = T.break (== '}') afterBrace
+                in case T.uncons afterClose of
+                  Just ('}', remainder) ->
+                    let val = Map.findWithDefault "" varName vars
+                    in go state acc tokens (val <> remainder)
+                  _ -> processChar ch rest
+
               Just (firstChar, _) | isLetter firstChar || firstChar == '_' ->
                 let (varName, remainder) = T.span (\c -> isLetter c || isNumber c || c == '_') rest
                     val = Map.findWithDefault "" varName vars
-                -- Inject value back into the text stream to process it in current state
                 in go state acc tokens (val <> remainder)
 
+              -- Zwykły znak $
               _ -> processChar ch rest
 
         _ -> processChar ch rest
