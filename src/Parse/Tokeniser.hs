@@ -14,46 +14,40 @@ import qualified Data.Text as T
 import Types
 
 tokeniseInput :: T.Text -> ([T.Text], TokenState)
-tokeniseInput input = 
-  let 
-    input_string = T.unpack input
-    (tokens_raw, state) = go NormalText "" input_string
-    tokens_filtered = filter (not . null) tokens_raw
-    tokens_right_order = map reverse tokens_filtered 
-
-  in (map T.pack tokens_right_order, state)
-  
+tokeniseInput = go NormalText [] []
   where
-    -- TokenState - qouting etc
-    -- String     - current accumulated argument
-    -- String     - remaining text
-    go :: TokenState -> String -> String -> ([String], TokenState)
-    -- 1. the current character is a "" (nothing) or a space
-    go state acc [] = ([acc], state)
-    -- add finished word to the end of the list
-    go NormalText acc (' ':xs) =
-      let (new_acc, state) = go NormalText "" xs
-      in (acc : new_acc, state)
-    -- 2. special caracters - state change
-    go NormalText acc ('\'':xs) = go SingleQuoteText acc xs
-    go NormalText acc ('"':xs)  = go DoubleQuotedText acc xs
-    go NormalText acc ('\\':xs) = go BackslashText acc xs
+    -- go state current_word_acc finished_tokens remaining_text
+    go :: TokenState -> [Char] -> [T.Text] -> T.Text -> ([T.Text], TokenState)
+    go state acc tokens txt = case T.uncons txt of
+      Nothing -> 
+        let finalTokens = if null acc && null tokens
+                            then []
+                            else reverse (T.pack (reverse acc) : tokens)
+        in (finalTokens, state)
 
-      -- 3. SingleQuoteText
-    go SingleQuoteText acc ('\'':xs) = go NormalText acc xs
-    go SingleQuoteText acc (x:xs)    = go SingleQuoteText (x:acc) xs
+      Just (ch, rest) -> case state of
+        NormalText -> case ch of
+          ' '  -> 
+            let newTokens = if null acc then tokens else T.pack (reverse acc) : tokens
+            in go NormalText [] newTokens rest
+          '\'' -> go SingleQuoteText acc tokens rest
+          '"'  -> go DoubleQuotedText acc tokens rest
+          '\\' -> go BackslashText acc tokens rest
+          _    -> go NormalText (ch : acc) tokens rest
 
-    --  4. DoubleQuotedText
-    go DoubleQuotedText acc ('"':xs) = go NormalText acc xs
-    go DoubleQuotedText acc ('\\':xs) = go BackslashQuotedText acc xs
-    go DoubleQuotedText acc (x:xs) = go DoubleQuotedText (x:acc) xs
+        SingleQuoteText -> case ch of
+          '\'' -> go NormalText acc tokens rest
+          _    -> go SingleQuoteText (ch : acc) tokens rest
 
-    -- 5. BackslashText
-    go BackslashText acc (x:xs) = go NormalText (x:acc) xs
-    --go BackslashQuotedText acc (x:xs) = go DoubleQuotedText (x:acc) xs
-    go BackslashQuotedText acc (x:xs)
-      | x `elem` ['$', '"', '\\'] = go DoubleQuotedText (x:acc) xs -- chars affected by backslash \
-      | otherwise                 = go DoubleQuotedText (x:'\\':acc) xs
+        DoubleQuotedText -> case ch of
+          '"'  -> go NormalText acc tokens rest
+          '\\' -> go BackslashQuotedText acc tokens rest
+          _    -> go DoubleQuotedText (ch : acc) tokens rest
 
-    -- default go (take 'x' and glue it in front of 'acc'):
-    go NormalText acc (x:xs) = go NormalText (x:acc) xs
+        BackslashText -> 
+          go NormalText (ch : acc) tokens rest
+
+        BackslashQuotedText -> 
+          if ch `elem` ['$', '"', '\\']
+            then go DoubleQuotedText (ch : acc) tokens rest
+            else go DoubleQuotedText (ch : '\\' : acc) tokens rest
