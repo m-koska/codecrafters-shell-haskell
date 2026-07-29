@@ -16,14 +16,14 @@ import Types
 
 -- | Tokenises input while expanding $VAR references (unless enclosed in single quotes).
 tokeniseInput :: Map.Map T.Text T.Text -> T.Text -> ([T.Text], TokenState)
-tokeniseInput vars = go NormalText [] []
+tokeniseInput vars = go NormalText False [] []
   where
-    go :: TokenState -> [Char] -> [T.Text] -> T.Text -> ([T.Text], TokenState)
-    go state acc tokens txt = case T.uncons txt of
+    go :: TokenState -> Bool -> [Char] -> [T.Text] -> T.Text -> ([T.Text], TokenState)
+    go state inToken acc tokens txt = case T.uncons txt of
       Nothing -> 
-        let finalTokens = if null acc && null tokens
-                            then []
-                            else reverse (T.pack (reverse acc) : tokens)
+        let finalTokens = if inToken
+                            then reverse (T.pack (reverse acc) : tokens)
+                            else reverse tokens
         in (finalTokens, state)
 
       Just (ch, rest) -> case state of
@@ -32,15 +32,20 @@ tokeniseInput vars = go NormalText [] []
               Just ('{', afterBrace) ->
                 let (varName, afterClose) = T.break (== '}') afterBrace
                 in case T.uncons afterClose of
-                  Just ('}', remainder) ->
-                    let val = Map.findWithDefault "" varName vars
-                    in go state acc tokens (val <> remainder)
+                  Just ('}', remainder) -> do
+                    let val = Map.lookup varName vars
+                    case val of
+                      Just x -> go state inToken acc tokens (x <> remainder)
+                      _      -> go state inToken acc tokens remainder
+                    
                   _ -> processChar ch rest
 
-              Just (firstChar, _) | isLetter firstChar || firstChar == '_' ->
+              Just (firstChar, _) | isLetter firstChar || firstChar == '_' -> do
                 let (varName, remainder) = T.span (\c -> isLetter c || isNumber c || c == '_') rest
-                    val = Map.findWithDefault "" varName vars
-                in go state acc tokens (val <> remainder)
+                let val = Map.lookup varName vars
+                case val of 
+                  Just x -> go state inToken acc tokens (x <> remainder)
+                  _      -> go state inToken acc tokens remainder
 
               -- Zwykły znak $
               _ -> processChar ch rest
@@ -51,26 +56,26 @@ tokeniseInput vars = go NormalText [] []
         processChar ch rest = case state of
           NormalText -> case ch of
             ' '  -> 
-              let newTokens = if null acc then tokens else T.pack (reverse acc) : tokens
-              in go NormalText [] newTokens rest
-            '\'' -> go SingleQuoteText acc tokens rest
-            '"'  -> go DoubleQuotedText acc tokens rest
-            '\\' -> go BackslashText acc tokens rest
-            _    -> go NormalText (ch : acc) tokens rest
+              let newTokens = if inToken then T.pack (reverse acc) : tokens else tokens
+              in go NormalText False [] newTokens rest
+            '\'' -> go SingleQuoteText True acc tokens rest
+            '"'  -> go DoubleQuotedText True acc tokens rest
+            '\\' -> go BackslashText True acc tokens rest
+            _    -> go NormalText True (ch : acc) tokens rest
 
           SingleQuoteText -> case ch of
-            '\'' -> go NormalText acc tokens rest
-            _    -> go SingleQuoteText (ch : acc) tokens rest
+            '\'' -> go NormalText True acc tokens rest
+            _    -> go SingleQuoteText True (ch : acc) tokens rest
 
           DoubleQuotedText -> case ch of
-            '"'  -> go NormalText acc tokens rest
-            '\\' -> go BackslashQuotedText acc tokens rest
-            _    -> go DoubleQuotedText (ch : acc) tokens rest
+            '"'  -> go NormalText True acc tokens rest
+            '\\' -> go BackslashQuotedText True acc tokens rest
+            _    -> go DoubleQuotedText True (ch : acc) tokens rest
 
           BackslashText -> 
-            go NormalText (ch : acc) tokens rest
+            go NormalText True (ch : acc) tokens rest
 
           BackslashQuotedText -> 
             if ch `elem` ['$', '"', '\\']
-              then go DoubleQuotedText (ch : acc) tokens rest
-              else go DoubleQuotedText (ch : '\\' : acc) tokens rest
+              then go DoubleQuotedText True (ch : acc) tokens rest
+              else go DoubleQuotedText True (ch : '\\' : acc) tokens rest
