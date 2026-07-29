@@ -304,7 +304,7 @@ executeCommand (BuiltIn (Declare args)) = do
                       modify $ \state -> state { shell_vars = new_map }
                     
                     else 
-                      liftIO $ T.IO.putStrLn $ "declare: " <> var <> "=" <> val <> ": not a valid identifier"
+                      liftIO $ T.IO.putStrLn $ "declare: `" <> var <> "=" <> val <> "': not a valid identifier"
   return True
   where 
     validateIdentifier var_name = 
