@@ -310,7 +310,7 @@ executeCommand (BuiltIn (Declare args)) = do
     validateIdentifier var_name = 
       case T.uncons var_name of
         Just (ch, rest) -> 
-          isLetter ch || ch == '_' &&
+          (isLetter ch || ch == '_') &&
           T.all (\c -> isLetter c || isNumber c || c == '_') rest
         Nothing      -> False
 
