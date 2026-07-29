@@ -19,24 +19,34 @@ walkAST token_list =
   let is_bg = not (null token_list) && last token_list == "&"
       tokens_to_parse = if is_bg then init token_list else token_list      
 
-      (left_side, right_side) = break (\x -> x `elem` [">", "1>", "2>", ">>", "1>>", "2>>"]) tokens_to_parse
-   
-      ast_node = case right_side of
-        [] -> parseCommand left_side
+      (left_pipe, right_pipe) = break (== "|") tokens_to_parse
 
-        (operator : file : rest) ->
-          let redirection_type = case operator of
-                t | t `elem` ["2>", "2>>"] -> ErrorRedirection
-                _    -> StandardRedirection
-              write_method = case operator of
-                t | t `elem` [">>", "1>>", "2>>"] -> AppendMethod
-                _ -> TruncateMethod
+  in  
+  
+  if not (null right_pipe)
+    then case (walkAST left_pipe, walkAST (tail right_pipe)) of
+      (Right l_ast, Right r_ast) ->
+        let pipe_ast = PipeNode l_ast r_ast
+        in Right $ if is_bg then BackgroundJobNode pipe_ast else pipe_ast
+      _ -> Left "syntax error (piping)"
+  else
+    let (left_side, right_side) = break (\x -> x `elem` [">", "1>", "2>", ">>", "1>>", "2>>"]) tokens_to_parse
+        ast_node = case right_side of
+          [] -> parseCommand left_side
 
-          in case walkAST (left_side ++ rest) of 
-            Left _err     -> Left _err
-            Right cmd_ast -> Right (RedirectNode redirection_type cmd_ast (T.unpack file) write_method)
+          (operator : file : rest) ->
+            let redirection_type = case operator of
+                  t | t `elem` ["2>", "2>>"] -> ErrorRedirection
+                  _    -> StandardRedirection
+                write_method = case operator of
+                  t | t `elem` [">>", "1>>", "2>>"] -> AppendMethod
+                  _ -> TruncateMethod
+
+            in case walkAST (left_side ++ rest) of 
+              Left _err     -> Left _err
+              Right cmd_ast -> Right (RedirectNode redirection_type cmd_ast (T.unpack file) write_method)
         
-        [_] -> Left "error"
+          [_] -> Left "error"
   in if is_bg
     then fmap BackgroundJobNode ast_node
     else ast_node

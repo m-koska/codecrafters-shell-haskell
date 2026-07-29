@@ -47,6 +47,7 @@ data AST
   = ExecNode Command                                      -- ^ Terminal leaf node representing a command execution.
   | RedirectNode RedirectionType AST FilePath WriteMethod -- ^ Wraps an AST node to capture and redirect its output stream.
   | BackgroundJobNode AST
+  | PipeNode AST AST
 
 -- | Specifies which output descriptor is captured for redirection.
 data RedirectionType

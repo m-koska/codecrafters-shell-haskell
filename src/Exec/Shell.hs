@@ -14,9 +14,10 @@ module Exec.Shell
 
 import Control.Monad.Catch (bracket)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (get, modify)
-import System.Posix (Fd, openFd, closeFd, dup, dupTo, stdOutput, stdError, OpenMode(WriteOnly), defaultFileFlags, trunc, append, creat)
+import Control.Monad.State (get, modify, evalStateT)
+import System.Posix (Fd, openFd, closeFd, dup, dupTo, stdOutput, stdError, OpenMode(WriteOnly), defaultFileFlags, trunc, append, creat, forkProcess, createPipe, exitImmediately, stdInput, getProcessStatus)
 import System.Process (proc, createProcess, waitForProcess, getPid)
+import System.Exit
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
@@ -37,34 +38,33 @@ processCommand (BackgroundJobNode inner_ast) = do
   modify $ \s -> s { is_next_cmd_in_bg = False }
   return result
 
-processCommand (RedirectNode redirection_type deeper_ast file write_method) = do
-  liftIO $ IOHandle.hFlush stdout
-  liftIO $ IOHandle.hFlush stderr
+processCommand (PipeNode left_ast right_ast) = do
+  state <- get
 
-  let target_std_fd = case redirection_type of
-        StandardRedirection -> stdOutput
-        ErrorRedirection    -> stdError
+  (read_fd, write_fd) <- liftIO createPipe
 
-      posix_flags = case write_method of
-        TruncateMethod -> defaultFileFlags { trunc = True, creat = Just 0o644 }
-        AppendMethod   -> defaultFileFlags { append = True, creat = Just 0o644 }
+  pid_left <- liftIO $ forkProcess $ do
+    _ <- dupTo write_fd stdOutput 
+    closeFd read_fd 
+    closeFd write_fd 
+    _ <- evalStateT (processCommand left_ast) state 
+    exitImmediately ExitSuccess
 
-      setup :: Shell Fd
-      setup = do
-        backup_fd <- liftIO $ dup target_std_fd
-        write_fd  <- liftIO $ openFd file WriteOnly posix_flags
-        liftIO $ dupTo write_fd target_std_fd
-        liftIO $ closeFd write_fd
-        return backup_fd
+  pid_right <- liftIO $ forkProcess $ do
+    _ <- dupTo read_fd stdInput
+    closeFd write_fd 
+    closeFd read_fd
+    _ <- evalStateT (processCommand right_ast) state
+    exitImmediately ExitSuccess
 
-      teardown :: Fd -> Shell ()
-      teardown backup_fd = do
-        liftIO $ IOHandle.hFlush stdout
-        liftIO $ dupTo backup_fd target_std_fd
-        liftIO $ closeFd backup_fd
-
-  bracket setup teardown (\_ -> processCommand deeper_ast)
-
+  liftIO $ closeFd read_fd
+  liftIO $ closeFd write_fd
+  
+  _ <- liftIO $ getProcessStatus True False pid_left
+  _ <- liftIO $ getProcessStatus True False pid_right
+  
+  return True
+  
 -- | Command execution dispatcher.
 executeCommand :: Command -> Shell Bool
 executeCommand Blank                     = return True
